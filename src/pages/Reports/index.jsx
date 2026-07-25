@@ -2,10 +2,11 @@ import PageHeader from "@/components/common/PageHeader";
 import AnalyticsChart from "@/components/charts/AnalyticsChart";
 import CoachCard from "@/components/cards/CoachCard";
 import StatCard from "@/components/cards/StatCard";
-import { summaryMetrics } from "@/data/summaryData";
+import { useAppContext } from "@/context/AppContext";
 import { Wallet, ArrowUpRight, ArrowDownRight } from "lucide-react";
 
 export default function ReportsPage() {
+  const { summaryMetrics } = useAppContext();
   const net = summaryMetrics.monthlyIncome.value - summaryMetrics.monthlyExpenses.value;
 
   return (

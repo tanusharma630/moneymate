@@ -1,15 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
-import { fetchTransactions } from "@/services/transactionsService";
+import { useAppContext } from "@/context/AppContext";
 
 /**
- * Query hook for the transactions list. This is the template every future
- * data hook (income, expenses, goals, borrow/lend) should follow once those
- * endpoints exist on the backend.
+ * Custom hook returning the transactions state from global context, mimicking
+ * the React Query response design to ensure full interface compatibility.
  */
 export function useTransactionsQuery() {
-  return useQuery({
-    queryKey: ["transactions"],
-    queryFn: fetchTransactions,
-    staleTime: 60_000,
-  });
+  const { transactions, isInitialLoading } = useAppContext();
+  
+  return {
+    data: transactions,
+    isLoading: isInitialLoading,
+  };
 }

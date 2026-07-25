@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check } from "lucide-react";
@@ -7,41 +6,37 @@ import Button from "@/components/ui/Button";
 import SectionTitle from "@/components/common/SectionTitle";
 import FormField, { inputClassName } from "@/components/forms/FormField";
 import { profileSettingsSchema } from "@/utils/schemas/profileSchema";
-import { profile } from "@/data/miscData";
-
-const DEFAULT_VALUES = {
-  name: profile.name,
-  email: "anvi@example.com",
-  monthlySavingsTarget: 30000,
-  currency: "INR",
-  notifyBudgetAlerts: true,
-};
+import { useAppContext } from "@/context/AppContext";
 
 /**
  * Profile settings form: name, email, monthly savings target, currency, and
  * a budget-alerts toggle. Validated with Zod via react-hook-form's resolver.
- * Submission currently updates local state only — swap onSubmit's body for
- * an apiClient call once the backend exists.
+ * Submission calls updateProfile() in AppContext to update the sidebar + navbar immediately.
  */
 export default function ProfileSettingsForm() {
-  const [justSaved, setJustSaved] = useState(false);
+  const { profile, updateProfile } = useAppContext();
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isSubmitSuccessful },
   } = useForm({
     resolver: zodResolver(profileSettingsSchema),
-    defaultValues: DEFAULT_VALUES,
+    defaultValues: {
+      name: profile.name,
+      email: "anvi@example.com",
+      monthlySavingsTarget: 30000,
+      currency: "INR",
+      notifyBudgetAlerts: true,
+    },
   });
 
   const onSubmit = async (values) => {
-    // Simulated persistence — replace with apiClient.put("/profile", values)
-    // once the Express backend is available.
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Simulate async persistence (swap for API call once backend exists)
+    await new Promise((resolve) => setTimeout(resolve, 400));
     localStorage.setItem("moneymate_profile", JSON.stringify(values));
-    setJustSaved(true);
-    setTimeout(() => setJustSaved(false), 2500);
+    // Update global Context so Navbar & Sidebar reflect changes instantly
+    updateProfile(values);
   };
 
   return (
@@ -96,7 +91,7 @@ export default function ProfileSettingsForm() {
           <Button type="submit" variant="primary" size="md" disabled={isSubmitting}>
             {isSubmitting ? "Saving..." : "Save changes"}
           </Button>
-          {justSaved && (
+          {isSubmitSuccessful && !isSubmitting && (
             <span className="flex items-center gap-1 text-[12px] text-success">
               <Check size={13} /> Saved
             </span>

@@ -3,9 +3,11 @@ import Card from "@/components/ui/Card";
 import SectionTitle from "@/components/common/SectionTitle";
 import EmptyState from "@/components/common/EmptyState";
 import BudgetCard from "@/components/cards/BudgetCard";
-import { budgetCategories } from "@/data/budgetData";
+import { useAppContext } from "@/context/AppContext";
 
 export default function BudgetSection() {
+  const { budgetCategories, dateRangeLabel } = useAppContext();
+
   if (budgetCategories.length === 0) {
     return (
       <Card>
@@ -24,7 +26,7 @@ export default function BudgetSection() {
     <Card>
       <SectionTitle
         title="Budget Planning"
-        action={<span className="text-[11.5px] text-text-tertiary">July 2026</span>}
+        action={<span className="text-[11.5px] text-text-tertiary">{dateRangeLabel}</span>}
       />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         {budgetCategories.map((category) => (

@@ -1,7 +1,6 @@
 import { Wallet, ArrowUpRight, ArrowDownRight, Target } from "lucide-react";
 import SummaryCard from "@/components/cards/SummaryCard";
-import { summaryMetrics } from "@/data/summaryData";
-import { sparklines } from "@/data/chartData";
+import { useAppContext } from "@/context/AppContext";
 
 /**
  * The top-of-dashboard row of four summary cards: Total Balance, Monthly
@@ -9,6 +8,7 @@ import { sparklines } from "@/data/chartData";
  * so the row reads as four distinct widgets rather than repeated cards.
  */
 export default function SummaryCardsSection() {
+  const { summaryMetrics, sparklines } = useAppContext();
   const { totalBalance, monthlyIncome, monthlyExpenses, savings } = summaryMetrics;
 
   return (

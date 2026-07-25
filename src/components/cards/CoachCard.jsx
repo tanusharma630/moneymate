@@ -2,7 +2,7 @@ import { Sparkles, ArrowRight } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import HealthScoreBadge from "@/components/cards/HealthScoreBadge";
-import { coachInsight } from "@/data/miscData";
+import { useAppContext } from "@/context/AppContext";
 import { formatCurrency } from "@/utils/formatters";
 
 /**
@@ -12,6 +12,7 @@ import { formatCurrency } from "@/utils/formatters";
  * estimate with a call to action.
  */
 export default function CoachCard() {
+  const { coachInsight } = useAppContext();
   return (
     <Card
       glow

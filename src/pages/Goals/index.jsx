@@ -2,9 +2,10 @@ import { Target, Wallet } from "lucide-react";
 import PageHeader from "@/components/common/PageHeader";
 import StatCard from "@/components/cards/StatCard";
 import GoalsSection from "@/components/dashboard/GoalsSection";
-import { savingsGoals } from "@/data/goalsData";
+import { useAppContext } from "@/context/AppContext";
 
 export default function GoalsPage() {
+  const { savingsGoals } = useAppContext();
   const totalTarget = savingsGoals.reduce((sum, g) => sum + g.target, 0);
   const totalSaved = savingsGoals.reduce((sum, g) => sum + g.saved, 0);
 

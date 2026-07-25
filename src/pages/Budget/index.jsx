@@ -1,11 +1,12 @@
 import PageHeader from "@/components/common/PageHeader";
 import BudgetSection from "@/components/dashboard/BudgetSection";
-import { budgetCategories } from "@/data/budgetData";
+import { useAppContext } from "@/context/AppContext";
 import { getProgressPct } from "@/utils/status";
 import StatCard from "@/components/cards/StatCard";
 import { Wallet, PiggyBank } from "lucide-react";
 
 export default function BudgetPage() {
+  const { budgetCategories } = useAppContext();
   const totalBudget = budgetCategories.reduce((sum, c) => sum + c.budget, 0);
   const totalSpent = budgetCategories.reduce((sum, c) => sum + c.spent, 0);
   const overallPct = getProgressPct(totalSpent, totalBudget);

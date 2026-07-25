@@ -10,7 +10,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import Card from "@/components/ui/Card";
-import { TREND_BY_RANGE } from "@/data/chartData";
+import { useAppContext } from "@/context/AppContext";
 import { formatCurrency, formatCompact } from "@/utils/formatters";
 import { THEME } from "@/constants/theme";
 import { cn } from "@/utils/cn";
@@ -45,10 +45,11 @@ function CurrentPeriodDot({ cx, cy, index, dataLength }) {
  * previous-period comparison overlay, and a highlighted current period.
  */
 export default function AnalyticsChart() {
+  const { trendData } = useAppContext();
   const [range, setRange] = useState("Month");
   const [compare, setCompare] = useState(false);
 
-  const baseData = TREND_BY_RANGE[range];
+  const baseData = (trendData && trendData[range]) || [];
   const chartData = useMemo(
     () => baseData.map((d) => ({ ...d, prevIncome: Math.round(d.income * 0.87) })),
     [baseData]

@@ -3,9 +3,10 @@ import Card from "@/components/ui/Card";
 import SectionTitle from "@/components/common/SectionTitle";
 import EmptyState from "@/components/common/EmptyState";
 import GoalCard from "@/components/cards/GoalCard";
-import { savingsGoals } from "@/data/goalsData";
+import { useAppContext } from "@/context/AppContext";
 
 export default function GoalsSection() {
+  const { savingsGoals } = useAppContext();
   if (savingsGoals.length === 0) {
     return (
       <Card className="xl:col-span-7">

@@ -1,12 +1,15 @@
 import ProgressBar from "@/components/ui/ProgressBar";
 import { formatCurrency } from "@/utils/formatters";
-import { profile } from "@/data/miscData";
+import { useAppContext } from "@/context/AppContext";
 
 /**
  * Compact profile card pinned to the bottom of the sidebar: avatar, name,
  * this month's savings, a savings streak, and month progress.
+ * Reads from AppContext so settings updates reflect immediately.
  */
 export default function ProfileSummaryCard() {
+  const { profile } = useAppContext();
+
   return (
     <div className="flex flex-col gap-3 rounded-card border border-border bg-surface px-3 py-3">
       <div className="flex items-center gap-2.5">

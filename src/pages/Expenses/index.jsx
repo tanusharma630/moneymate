@@ -1,28 +1,43 @@
-import { Receipt, TrendingDown, CreditCard } from "lucide-react";
+import { Receipt, TrendingDown, CreditCard, Plus } from "lucide-react";
 import PageHeader from "@/components/common/PageHeader";
 import StatCard from "@/components/cards/StatCard";
+import Button from "@/components/ui/Button";
 import TransactionsList from "@/components/tables/TransactionsList";
 import { useTransactionsQuery } from "@/hooks/useTransactionsQuery";
 import { selectExpenseTransactions, sumTransactions } from "@/utils/transactionSelectors";
-import { summaryMetrics } from "@/data/summaryData";
+import { useAppContext } from "@/context/AppContext";
 import { SkeletonBlock } from "@/components/ui/Skeleton";
 
 export default function ExpensesPage() {
+  const { summaryMetrics, openQuickAdd } = useAppContext();
   const { data: transactions, isLoading } = useTransactionsQuery();
   const expenseTransactions = selectExpenseTransactions(transactions ?? []);
   const totalLogged = sumTransactions(expenseTransactions);
+  const largestExpense = expenseTransactions.length > 0
+    ? Math.max(...expenseTransactions.map((t) => Math.abs(t.amount)))
+    : 0;
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Expenses"
         description="Everything you've spent this month, across every category and payment method."
+        action={
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => openQuickAdd("expense")}
+            className="flex items-center gap-1.5"
+          >
+            <Plus size={14} /> Add Expense
+          </Button>
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="This month" value={summaryMetrics.monthlyExpenses.value} icon={Receipt} valueClassName="text-danger" />
         <StatCard label="Logged transactions" value={totalLogged} icon={TrendingDown} />
-        <StatCard label="Largest expense" value={6200} icon={CreditCard} />
+        <StatCard label="Largest expense" value={largestExpense} icon={CreditCard} />
       </div>
 
       {isLoading ? (

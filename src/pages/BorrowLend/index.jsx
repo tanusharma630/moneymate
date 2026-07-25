@@ -5,9 +5,10 @@ import Card from "@/components/ui/Card";
 import SectionTitle from "@/components/common/SectionTitle";
 import EmptyState from "@/components/common/EmptyState";
 import LendCard from "@/components/cards/LendCard";
-import { borrowLendRecords } from "@/data/borrowLendData";
+import { useAppContext } from "@/context/AppContext";
 
 export default function BorrowLendPage() {
+  const { borrowLendRecords } = useAppContext();
   const lent = borrowLendRecords.filter((r) => r.type === "lent");
   const borrowed = borrowLendRecords.filter((r) => r.type === "borrowed");
   const totalLent = lent.reduce((sum, r) => sum + r.amount, 0);

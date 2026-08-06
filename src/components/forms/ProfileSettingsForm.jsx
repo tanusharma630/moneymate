@@ -7,14 +7,19 @@ import SectionTitle from "@/components/common/SectionTitle";
 import FormField, { inputClassName } from "@/components/forms/FormField";
 import { profileSettingsSchema } from "@/utils/schemas/profileSchema";
 import { useAppContext } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
 
 /**
  * Profile settings form: name, email, monthly savings target, currency, and
  * a budget-alerts toggle. Validated with Zod via react-hook-form's resolver.
- * Submission calls updateProfile() in AppContext to update the sidebar + navbar immediately.
+ * Submission calls updateUserProfile() in AuthContext & AppContext to update UI immediately.
  */
 export default function ProfileSettingsForm() {
-  const { profile, updateProfile } = useAppContext();
+  const { profile, updateProfile, showToast } = useAppContext();
+  const { user, updateUserProfile } = useAuth();
+
+  const activeName = user?.name || profile?.name || "Anvi Sharma";
+  const activeEmail = user?.email || profile?.email || "anvi@example.com";
 
   const {
     register,
@@ -23,21 +28,25 @@ export default function ProfileSettingsForm() {
   } = useForm({
     resolver: zodResolver(profileSettingsSchema),
     defaultValues: {
-      name: profile?.name || "Anvi Sharma",
-      email: profile?.email || "anvi@example.com",
-      monthlySavingsTarget: profile?.monthlySavingsTarget || 30000,
-      currency: profile?.currency || "INR",
-      notifyBudgetAlerts: profile?.notifyBudgetAlerts ?? true,
+      name: activeName,
+      email: activeEmail,
+      monthlySavingsTarget: user?.monthlySavingsTarget || profile?.monthlySavingsTarget || 30000,
+      currency: user?.currency || profile?.currency || "INR",
+      notifyBudgetAlerts: user?.notifyBudgetAlerts ?? profile?.notifyBudgetAlerts ?? true,
     },
   });
 
   const onSubmit = async (values) => {
-    // Simulate async persistence (swap for API call once backend exists)
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    localStorage.setItem("moneymate_profile", JSON.stringify(values));
-    // Update global Context so Navbar & Sidebar reflect changes instantly
-    updateProfile(values);
+    try {
+      await updateUserProfile(values);
+      updateProfile(values);
+      localStorage.setItem("moneymate_profile", JSON.stringify(values));
+      showToast("Profile settings saved successfully", "success");
+    } catch (err) {
+      showToast(err.message || "Failed to update profile", "error");
+    }
   };
+
 
   return (
     <Card>

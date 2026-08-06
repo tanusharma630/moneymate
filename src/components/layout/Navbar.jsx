@@ -1,16 +1,21 @@
-import { Calendar, ChevronDown, Search, Sun, Moon } from "lucide-react";
+import { Search, Sun, Moon } from "lucide-react";
 import MobileNav from "@/components/layout/MobileNav";
 import QuickAddMenu from "@/components/layout/QuickAddMenu";
 import NotificationsMenu from "@/components/layout/NotificationsMenu";
 import ProfileMenu from "@/components/layout/ProfileMenu";
+import CalendarMonthMenu from "@/components/layout/CalendarMonthMenu";
 import { useAppContext } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
 
 /**
  * Top bar shown on every page: greeting, search, date range, quick add,
  * notifications, and profile. Renders the mobile nav trigger on small screens.
  */
 export default function Navbar() {
-  const { dateRangeLabel, profile, openSearch, theme, toggleTheme } = useAppContext();
+  const { openSearch, theme, toggleTheme } = useAppContext();
+  const { user } = useAuth();
+
+  const activeName = user?.name || "Anvi Sharma";
 
   const hour = new Date().getHours();
   const greeting =
@@ -22,7 +27,7 @@ export default function Navbar() {
         <MobileNav />
         <div className="min-w-0">
           <h1 className="truncate text-[19px] font-semibold tracking-tight text-text-primary">
-            {greeting}, {profile.name}
+            {greeting}, {activeName}
           </h1>
           <p className="mt-0.5 text-[12.5px] text-text-tertiary">
             Here&apos;s what&apos;s happening with your money today.
@@ -45,14 +50,7 @@ export default function Navbar() {
           </span>
         </button>
 
-        <button
-          type="button"
-          className="hidden items-center gap-1.5 rounded-chip border border-border bg-surface px-3 py-1.5 text-[12.5px] text-text-secondary sm:flex"
-        >
-          <Calendar size={13} className="text-text-tertiary" />
-          {dateRangeLabel}
-          <ChevronDown size={13} className="text-text-tertiary" />
-        </button>
+        <CalendarMonthMenu />
 
         {/* Theme Toggle */}
         <button

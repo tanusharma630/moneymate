@@ -2,19 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
+:root, html.dark {
+  color-scheme: dark;
+  --color-bg: #0B1020;
+  --color-surface: #10162A;
+  --color-surface-raised: #141B31;
+  --color-surface-hi: #171F3A;
+  --color-border: rgba(255, 255, 255, 0.07);
+  --color-border-strong: rgba(255, 255, 255, 0.14);
+  --color-text-primary: #E8EAF4;
+  --color-text-secondary: #8B92AB;
+  --color-text-tertiary: #565D75;
+}
+
+html.light {
+  color-scheme: light;
+  --color-bg: #F4F6FB;
+  --color-surface: #FFFFFF;
+  --color-surface-raised: #F8FAFC;
+  --color-surface-hi: #EEF2F6;
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-border-strong: rgba(0, 0, 0, 0.16);
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-tertiary: #94A3B8;
+}
+
 @layer base {
   * {
     @apply border-border;
-  }
-
-  html {
-    color-scheme: dark;
   }
 
   body {
     @apply bg-bg text-text-primary;
     font-family: "Inter", -apple-system, sans-serif;
   }
+
 
   ::selection {
     @apply bg-accent/30 text-text-primary;

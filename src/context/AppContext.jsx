@@ -1,4 +1,5 @@
 import { createContext, useContext, useMemo, useState, useCallback, useRef, useEffect, useLayoutEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { transactions as initialTransactions } from "@/data/transactionsData";
 import { budgetCategories as initialBudgetCategories } from "@/data/budgetData";
 import { savingsGoals as initialSavingsGoals } from "@/data/goalsData";
@@ -12,20 +13,74 @@ const AppContext = createContext(undefined);
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-const loadFromStorage = (key, fallback) => {
-  try {
-    const saved = localStorage.getItem(key);
-    return saved ? JSON.parse(saved) : fallback;
-  } catch {
-    return fallback;
-  }
+const EMPTY_SUMMARY = {
+  totalBalance: { value: 0, changePct: 0, periodLabel: "vs last month", updatedLabel: "Updated just now" },
+  monthlyIncome: { value: 0, changePct: 0, periodLabel: "vs last month", updatedLabel: "Updated just now" },
+  monthlyExpenses: { value: 0, changePct: 0, periodLabel: "vs last month", updatedLabel: "Updated just now" },
+  savings: { value: 0, changePct: 0, periodLabel: "vs last month", updatedLabel: "Updated just now" },
 };
+
+function loadUserData(user) {
+  if (!user) {
+    return {
+      transactions: [],
+      budgetCategories: [],
+      savingsGoals: [],
+      borrowLendRecords: [],
+      summaryMetrics: EMPTY_SUMMARY,
+      profile: initialProfile,
+      notifications: [],
+    };
+  }
+
+  const storageKey = `moneymate_udata_${user.id}`;
+  try {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch {
+    /* fallback */
+  }
+
+  // Demo user fallback
+  if (user.email === "anvi@example.com" || user.id === "u-default") {
+    return {
+      transactions: initialTransactions,
+      budgetCategories: initialBudgetCategories,
+      savingsGoals: initialSavingsGoals,
+      borrowLendRecords: initialBorrowLendRecords,
+      summaryMetrics: initialSummaryMetrics,
+      profile: { ...initialProfile, name: user.name || initialProfile.name, email: user.email },
+      notifications: initialNotifications,
+    };
+  }
+
+  // Brand new user signup (₹0 metrics, empty arrays)
+  return {
+    transactions: [],
+    budgetCategories: [],
+    savingsGoals: [],
+    borrowLendRecords: [],
+    summaryMetrics: EMPTY_SUMMARY,
+    profile: {
+      name: user.name || "",
+      email: user.email || "",
+      monthlySavingsTarget: 30000,
+      currency: "INR",
+      notifyBudgetAlerts: true,
+    },
+    notifications: [],
+  };
+}
 
 /**
  * Global AppProvider implementing the finance state system, Quick Add modals,
  * and toast alert dispatchers.
  */
 export function AppProvider({ children }) {
+  const { user } = useAuth();
+
   const [dateRangeLabel, setDateRangeLabel] = useState("July 2026");
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
@@ -35,37 +90,50 @@ export function AppProvider({ children }) {
     return () => clearTimeout(timer);
   }, []);
 
-  // Core Financial States (backed by localStorage)
-  const [transactions, setTransactions] = useState(() => loadFromStorage("moneymate_transactions", initialTransactions));
-  const [budgetCategories, setBudgetCategories] = useState(() => loadFromStorage("moneymate_budgetCategories", initialBudgetCategories));
-  const [savingsGoals, setSavingsGoals] = useState(() => loadFromStorage("moneymate_savingsGoals", initialSavingsGoals));
-  const [borrowLendRecords, setBorrowLendRecords] = useState(() => loadFromStorage("moneymate_borrowLendRecords", initialBorrowLendRecords));
-  const [summaryMetrics, setSummaryMetrics] = useState(() => loadFromStorage("moneymate_summaryMetrics", initialSummaryMetrics));
+  // Core Financial States (backed by user-scoped localStorage)
+  const [transactions, setTransactions] = useState([]);
+  const [budgetCategories, setBudgetCategories] = useState([]);
+  const [savingsGoals, setSavingsGoals] = useState([]);
+  const [borrowLendRecords, setBorrowLendRecords] = useState([]);
+  const [summaryMetrics, setSummaryMetrics] = useState(EMPTY_SUMMARY);
   const [trendData, setTrendData] = useState(initialTrendData);
   const [sparklines, setSparklines] = useState(initialSparklines);
-  const [profile, setProfile] = useState(() => loadFromStorage("moneymate_profile", initialProfile));
-  const [notifications, setNotifications] = useState(initialNotifications);
+  const [profile, setProfile] = useState(initialProfile);
+  const [notifications, setNotifications] = useState([]);
   const [coachInsight] = useState(initialCoachInsight);
 
-  // Persist financial states
+  // Sync state when active user changes
   useEffect(() => {
-    try { localStorage.setItem("moneymate_transactions", JSON.stringify(transactions)); } catch { /* noop */ }
-  }, [transactions]);
+    const data = loadUserData(user);
+    setTransactions(data.transactions || []);
+    setBudgetCategories(data.budgetCategories || []);
+    setSavingsGoals(data.savingsGoals || []);
+    setBorrowLendRecords(data.borrowLendRecords || []);
+    setSummaryMetrics(data.summaryMetrics || EMPTY_SUMMARY);
+    setProfile(data.profile || initialProfile);
+    setNotifications(data.notifications || []);
+  }, [user]);
+
+  // Persist user-scoped financial states whenever they update
   useEffect(() => {
-    try { localStorage.setItem("moneymate_budgetCategories", JSON.stringify(budgetCategories)); } catch { /* noop */ }
-  }, [budgetCategories]);
-  useEffect(() => {
-    try { localStorage.setItem("moneymate_savingsGoals", JSON.stringify(savingsGoals)); } catch { /* noop */ }
-  }, [savingsGoals]);
-  useEffect(() => {
-    try { localStorage.setItem("moneymate_borrowLendRecords", JSON.stringify(borrowLendRecords)); } catch { /* noop */ }
-  }, [borrowLendRecords]);
-  useEffect(() => {
-    try { localStorage.setItem("moneymate_summaryMetrics", JSON.stringify(summaryMetrics)); } catch { /* noop */ }
-  }, [summaryMetrics]);
-  useEffect(() => {
-    try { localStorage.setItem("moneymate_profile", JSON.stringify(profile)); } catch { /* noop */ }
-  }, [profile]);
+    if (!user?.id) return;
+    const storageKey = `moneymate_udata_${user.id}`;
+    const dataToSave = {
+      transactions,
+      budgetCategories,
+      savingsGoals,
+      borrowLendRecords,
+      summaryMetrics,
+      profile,
+      notifications,
+    };
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+    } catch {
+      /* noop */
+    }
+  }, [user?.id, transactions, budgetCategories, savingsGoals, borrowLendRecords, summaryMetrics, profile, notifications]);
+
 
   // Interactive UI Modal & Toast States
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
@@ -547,10 +615,41 @@ export function AppProvider({ children }) {
     type: "all",
   });
 
+  // Month-filtered transactions based on dateRangeLabel selector ("All Time", "July 2026", etc.)
+  const monthFilteredTransactions = useMemo(() => {
+    if (!dateRangeLabel || dateRangeLabel === "All Time") {
+      return transactions;
+    }
+    const labelParts = dateRangeLabel.trim().split(" ");
+    const selectedMonthName = labelParts[0];
+    const selectedYearStr = labelParts[1];
+
+    return transactions.filter((t) => {
+      const dateStr = t.rawDate || t.date;
+      if (!dateStr) return true;
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime())) {
+        const mAbbr = MONTHS[d.getMonth()];
+        const fullMName = [
+          "January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"
+        ][d.getMonth()];
+
+        const monthMatches =
+          selectedMonthName.toLowerCase().startsWith(mAbbr.toLowerCase()) ||
+          fullMName.toLowerCase() === selectedMonthName.toLowerCase();
+
+        const yearMatches = !selectedYearStr || d.getFullYear().toString() === selectedYearStr;
+        return monthMatches && yearMatches;
+      }
+      return dateStr.toLowerCase().includes(selectedMonthName.toLowerCase());
+    });
+  }, [transactions, dateRangeLabel]);
+
   // Derived computed stats across transactions, budgets, goals
   const derivedStats = useMemo(() => {
-    const totalIncome = transactions.filter((t) => t.type === "income").reduce((s, t) => s + Math.abs(t.amount), 0);
-    const totalExpenses = transactions.filter((t) => t.type === "expense").reduce((s, t) => s + Math.abs(t.amount), 0);
+    const totalIncome = monthFilteredTransactions.filter((t) => t.type === "income").reduce((s, t) => s + Math.abs(t.amount), 0);
+    const totalExpenses = monthFilteredTransactions.filter((t) => t.type === "expense").reduce((s, t) => s + Math.abs(t.amount), 0);
     const netCashFlow = totalIncome - totalExpenses;
     
     const totalBudget = budgetCategories.reduce((s, c) => s + (c.budget || 0), 0);
@@ -573,7 +672,7 @@ export function AppProvider({ children }) {
       totalGoalTarget,
       overallGoalPct,
     };
-  }, [transactions, budgetCategories, savingsGoals]);
+  }, [monthFilteredTransactions, budgetCategories, savingsGoals]);
 
   // Budget Actions
   const openBudgetModal = useCallback((category = null) => {
@@ -777,7 +876,9 @@ export function AppProvider({ children }) {
       setIsInitialLoading,
 
       // Financial State variables
-      transactions,
+      transactions: monthFilteredTransactions,
+      allTransactions: transactions,
+      monthFilteredTransactions,
       budgetCategories,
       savingsGoals,
       borrowLendRecords,
@@ -852,6 +953,7 @@ export function AppProvider({ children }) {
       dateRangeLabel,
       isInitialLoading,
       transactions,
+      monthFilteredTransactions,
       budgetCategories,
       savingsGoals,
       borrowLendRecords,

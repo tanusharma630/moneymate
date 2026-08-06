@@ -12,7 +12,7 @@ import {
 import Card from "@/components/ui/Card";
 import { useAppContext } from "@/context/AppContext";
 import { formatCurrency, formatCompact } from "@/utils/formatters";
-import { THEME } from "@/constants/theme";
+import { getThemeColors } from "@/constants/theme";
 import { cn } from "@/utils/cn";
 
 const RANGES = ["Week", "Month", "Year"];
@@ -29,12 +29,12 @@ const RANGE_HIGHLIGHT = {
   Year: "This year",
 };
 
-function CurrentPeriodDot({ cx, cy, index, dataLength }) {
+function CurrentPeriodDot({ cx, cy, index, dataLength, themeColors }) {
   if (index !== dataLength - 1) return null;
   return (
     <g>
-      <circle cx={cx} cy={cy} r={9} fill={THEME.accent} fillOpacity={0.15} />
-      <circle cx={cx} cy={cy} r={4} fill={THEME.accent} stroke={THEME.bg} strokeWidth={2} />
+      <circle cx={cx} cy={cy} r={9} fill={themeColors.accent} fillOpacity={0.15} />
+      <circle cx={cx} cy={cy} r={4} fill={themeColors.accent} stroke={themeColors.bg} strokeWidth={2} />
     </g>
   );
 }
@@ -45,7 +45,8 @@ function CurrentPeriodDot({ cx, cy, index, dataLength }) {
  * previous-period comparison overlay, and a highlighted current period.
  */
 export default function AnalyticsChart() {
-  const { trendData } = useAppContext();
+  const { trendData, theme } = useAppContext();
+  const themeColors = useMemo(() => getThemeColors(theme), [theme]);
   const [range, setRange] = useState("Month");
   const [compare, setCompare] = useState(false);
 
@@ -55,7 +56,7 @@ export default function AnalyticsChart() {
     [baseData]
   );
   const averageIncome = useMemo(
-    () => baseData.reduce((sum, d) => sum + d.income, 0) / baseData.length,
+    () => baseData.reduce((sum, d) => sum + d.income, 0) / (baseData.length || 1),
     [baseData]
   );
 
@@ -68,10 +69,10 @@ export default function AnalyticsChart() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <LegendDot color={THEME.accent} label="Income" />
-          <LegendDot color={THEME.textTertiary} label="Expenses" />
-          <LegendLine color={THEME.accent2} label="Average" />
-          {compare && <LegendLine color={THEME.accent} dashed label="Previous period" />}
+          <LegendDot color={themeColors.accent} label="Income" />
+          <LegendDot color={themeColors.textTertiary} label="Expenses" />
+          <LegendLine color={themeColors.accent2} label="Average" />
+          {compare && <LegendLine color={themeColors.accent} dashed label="Previous period" />}
         </div>
       </div>
 
@@ -119,69 +120,69 @@ export default function AnalyticsChart() {
           <AreaChart data={chartData} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="mm-income-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={THEME.accent} stopOpacity={0.35} />
-                <stop offset="100%" stopColor={THEME.accent} stopOpacity={0} />
+                <stop offset="0%" stopColor={themeColors.accent} stopOpacity={0.35} />
+                <stop offset="100%" stopColor={themeColors.accent} stopOpacity={0} />
               </linearGradient>
               <linearGradient id="mm-expense-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={THEME.textTertiary} stopOpacity={0.2} />
-                <stop offset="100%" stopColor={THEME.textTertiary} stopOpacity={0} />
+                <stop offset="0%" stopColor={themeColors.textTertiary} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={themeColors.textTertiary} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke={THEME.border} vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={themeColors.border} vertical={false} />
             <XAxis
               dataKey="label"
-              tick={{ fill: THEME.textTertiary, fontSize: 11.5 }}
-              axisLine={{ stroke: THEME.border }}
+              tick={{ fill: themeColors.textTertiary, fontSize: 11.5 }}
+              axisLine={{ stroke: themeColors.border }}
               tickLine={false}
             />
             <YAxis
-              tick={{ fill: THEME.textTertiary, fontSize: 11 }}
+              tick={{ fill: themeColors.textTertiary, fontSize: 11 }}
               axisLine={false}
               tickLine={false}
               tickFormatter={formatCompact}
             />
-            <ReferenceLine y={averageIncome} stroke={THEME.accent2} strokeDasharray="4 4" strokeOpacity={0.6} />
+            <ReferenceLine y={averageIncome} stroke={themeColors.accent2} strokeDasharray="4 4" strokeOpacity={0.6} />
             <Tooltip
               contentStyle={{
-                background: THEME.surfaceRaised,
-                border: `1px solid ${THEME.borderStrong}`,
+                background: themeColors.surfaceRaised,
+                border: `1px solid ${themeColors.borderStrong}`,
                 borderRadius: 10,
                 fontSize: 12,
               }}
-              labelStyle={{ color: THEME.textPrimary, fontWeight: 600, marginBottom: 4 }}
-              itemStyle={{ color: THEME.textSecondary }}
+              labelStyle={{ color: themeColors.textPrimary, fontWeight: 600, marginBottom: 4 }}
+              itemStyle={{ color: themeColors.textSecondary }}
               formatter={(v) => [formatCurrency(v), ""]}
-              cursor={{ stroke: THEME.borderStrong, strokeWidth: 1 }}
+              cursor={{ stroke: themeColors.borderStrong, strokeWidth: 1 }}
               animationDuration={150}
             />
             <Area
               type="monotone"
               dataKey="income"
-              stroke={THEME.accent}
+              stroke={themeColors.accent}
               strokeWidth={2}
               fill="url(#mm-income-grad)"
               isAnimationActive
               animationDuration={800}
               animationEasing="ease-out"
-              dot={(p) => <CurrentPeriodDot key={`income-${p.index}`} {...p} dataLength={chartData.length} />}
-              activeDot={{ r: 5, fill: THEME.accent, stroke: THEME.bg, strokeWidth: 2 }}
+              dot={(p) => <CurrentPeriodDot key={`income-${p.index}`} {...p} dataLength={chartData.length} themeColors={themeColors} />}
+              activeDot={{ r: 5, fill: themeColors.accent, stroke: themeColors.bg, strokeWidth: 2 }}
             />
             <Area
               type="monotone"
               dataKey="expenses"
-              stroke={THEME.textTertiary}
+              stroke={themeColors.textTertiary}
               strokeWidth={2}
               fill="url(#mm-expense-grad)"
               isAnimationActive
               animationDuration={800}
               animationEasing="ease-out"
-              activeDot={{ r: 5, fill: THEME.textTertiary, stroke: THEME.bg, strokeWidth: 2 }}
+              activeDot={{ r: 5, fill: themeColors.textTertiary, stroke: themeColors.bg, strokeWidth: 2 }}
             />
             {compare && (
               <Area
                 type="monotone"
                 dataKey="prevIncome"
-                stroke={THEME.accent}
+                stroke={themeColors.accent}
                 strokeWidth={1.5}
                 strokeDasharray="4 4"
                 fill="transparent"

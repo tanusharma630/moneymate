@@ -7,4 +7,9 @@ export const ROUTES = {
   BORROW_LEND: "/borrow-lend",
   REPORTS: "/reports",
   SETTINGS: "/settings",
+  LOGIN: "/login",
+  SIGNUP: "/signup",
+  FORGOT_PASSWORD: "/forgot-password",
+  RESET_PASSWORD: "/reset-password",
 };
+

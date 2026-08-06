@@ -5,18 +5,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: "#0B1020",
-        surface: "#10162A",
-        "surface-raised": "#141B31",
-        "surface-hi": "#171F3A",
+        bg: "var(--color-bg)",
+        surface: "var(--color-surface)",
+        "surface-raised": "var(--color-surface-raised)",
+        "surface-hi": "var(--color-surface-hi)",
         border: {
-          DEFAULT: "rgba(255,255,255,0.07)",
-          strong: "rgba(255,255,255,0.14)",
+          DEFAULT: "var(--color-border)",
+          strong: "var(--color-border-strong)",
         },
         text: {
-          primary: "#E8EAF4",
-          secondary: "#8B92AB",
-          tertiary: "#565D75",
+          primary: "var(--color-text-primary)",
+          secondary: "var(--color-text-secondary)",
+          tertiary: "var(--color-text-tertiary)",
         },
         accent: {
           DEFAULT: "#6E7BF2",

@@ -8,8 +8,14 @@ import { useAppContext } from "@/context/AppContext";
  * so the row reads as four distinct widgets rather than repeated cards.
  */
 export default function SummaryCardsSection() {
-  const { summaryMetrics, sparklines } = useAppContext();
+  const { summaryMetrics, derivedStats, sparklines } = useAppContext();
   const { totalBalance, monthlyIncome, monthlyExpenses, savings } = summaryMetrics;
+
+  const currentBalance = derivedStats ? (summaryMetrics.totalBalance.value + derivedStats.netCashFlow - (monthlyIncome.value - monthlyExpenses.value)) : totalBalance.value;
+  const currentIncome = derivedStats ? derivedStats.totalIncome || monthlyIncome.value : monthlyIncome.value;
+  const currentExpenses = derivedStats ? derivedStats.totalExpenses || monthlyExpenses.value : monthlyExpenses.value;
+  const currentSavings = derivedStats ? derivedStats.totalGoalSaved || savings.value : savings.value;
+  const ringPct = derivedStats ? derivedStats.overallGoalPct || savings.targetPct : savings.targetPct;
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -18,7 +24,7 @@ export default function SummaryCardsSection() {
         icon={Wallet}
         tone="accent"
         layout="hero"
-        value={totalBalance.value}
+        value={currentBalance}
         changePct={totalBalance.changePct}
         comparisonLabel={totalBalance.comparisonLabel}
         updatedLabel={totalBalance.updatedLabel}
@@ -29,7 +35,7 @@ export default function SummaryCardsSection() {
         icon={ArrowUpRight}
         tone="success"
         layout="spark"
-        value={monthlyIncome.value}
+        value={currentIncome}
         changePct={monthlyIncome.changePct}
         comparisonLabel={monthlyIncome.comparisonLabel}
         updatedLabel={monthlyIncome.updatedLabel}
@@ -40,7 +46,7 @@ export default function SummaryCardsSection() {
         icon={ArrowDownRight}
         tone="danger"
         layout="spark"
-        value={monthlyExpenses.value}
+        value={currentExpenses}
         changePct={monthlyExpenses.changePct}
         comparisonLabel={monthlyExpenses.comparisonLabel}
         updatedLabel={monthlyExpenses.updatedLabel}
@@ -51,12 +57,13 @@ export default function SummaryCardsSection() {
         icon={Target}
         tone="accent"
         layout="ring"
-        value={savings.value}
+        value={currentSavings}
         changePct={savings.changePct}
         comparisonLabel={savings.comparisonLabel}
         updatedLabel={savings.updatedLabel}
-        ringPct={savings.targetPct}
+        ringPct={ringPct}
       />
     </div>
   );
 }
+

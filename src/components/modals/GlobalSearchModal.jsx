@@ -18,9 +18,10 @@ export default function GlobalSearchModal() {
     isSearchOpen,
     closeSearch,
     transactions,
+    budgetCategories,
+    savingsGoals,
     editTransaction,
     deleteTransaction,
-    duplicateTransaction,
   } = useAppContext();
 
   const [query, setQuery] = useState("");
@@ -53,7 +54,8 @@ export default function GlobalSearchModal() {
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return transactions.slice(0, 8);
-    return transactions.filter(
+
+    const matchedTx = transactions.filter(
       (t) =>
         t.merchant.toLowerCase().includes(q) ||
         t.category.toLowerCase().includes(q) ||
@@ -61,7 +63,34 @@ export default function GlobalSearchModal() {
         (t.notes && t.notes.toLowerCase().includes(q)) ||
         t.date.toLowerCase().includes(q)
     );
-  }, [transactions, query]);
+
+    const matchedBudgets = budgetCategories
+      .filter((b) => b.name.toLowerCase().includes(q) || (b.notes && b.notes.toLowerCase().includes(q)))
+      .map((b) => ({
+        id: b.id,
+        merchant: `Budget: ${b.name}`,
+        category: "Budget",
+        amount: -b.budget,
+        type: "expense",
+        date: b.month || "Monthly",
+        method: "Budget Limit",
+      }));
+
+    const matchedGoals = savingsGoals
+      .filter((g) => (g.title || g.name || "").toLowerCase().includes(q) || (g.notes && g.notes.toLowerCase().includes(q)))
+      .map((g) => ({
+        id: g.id,
+        merchant: `Savings Goal: ${g.title || g.name}`,
+        category: "Savings",
+        amount: g.target,
+        type: "income",
+        date: g.targetDate || "Goal",
+        method: `Saved: ₹${g.saved.toLocaleString()}`,
+      }));
+
+    return [...matchedBudgets, ...matchedGoals, ...matchedTx];
+  }, [transactions, budgetCategories, savingsGoals, query]);
+
 
   // Keyboard navigation
   const handleKeyDown = useCallback(
@@ -143,7 +172,7 @@ export default function GlobalSearchModal() {
                 {results.length === 0 ? (
                   <div className="py-10 text-center">
                     <Search size={24} className="mx-auto mb-3 text-text-tertiary" />
-                    <p className="text-[13px] font-medium text-text-secondary">No results for "{query}"</p>
+                    <p className="text-[13px] font-medium text-text-secondary">No results for &quot;{query}&quot;</p>
                     <p className="mt-1 text-[11.5px] text-text-tertiary">
                       Try a different merchant name, category, or payment method.
                     </p>

@@ -23,11 +23,11 @@ export default function ProfileSettingsForm() {
   } = useForm({
     resolver: zodResolver(profileSettingsSchema),
     defaultValues: {
-      name: profile.name,
-      email: "anvi@example.com",
-      monthlySavingsTarget: 30000,
-      currency: "INR",
-      notifyBudgetAlerts: true,
+      name: profile?.name || "Anvi Sharma",
+      email: profile?.email || "anvi@example.com",
+      monthlySavingsTarget: profile?.monthlySavingsTarget || 30000,
+      currency: profile?.currency || "INR",
+      notifyBudgetAlerts: profile?.notifyBudgetAlerts ?? true,
     },
   });
 

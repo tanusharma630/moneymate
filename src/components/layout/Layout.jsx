@@ -4,6 +4,9 @@ import Sidebar from "@/components/layout/Sidebar";
 import Navbar from "@/components/layout/Navbar";
 import QuickAddModal from "@/components/layout/QuickAddModal";
 import GlobalSearchModal from "@/components/modals/GlobalSearchModal";
+import BudgetModal from "@/components/modals/BudgetModal";
+import GoalModal from "@/components/modals/GoalModal";
+import BorrowLendModal from "@/components/modals/BorrowLendModal";
 import Toast from "@/components/ui/Toast";
 import { useAppContext } from "@/context/AppContext";
 
@@ -39,6 +42,9 @@ export default function Layout() {
       </div>
       <QuickAddModal />
       <GlobalSearchModal />
+      <BudgetModal />
+      <GoalModal />
+      <BorrowLendModal />
       <Toast />
     </div>
   );

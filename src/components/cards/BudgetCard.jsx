@@ -3,6 +3,7 @@ import ProgressBar from "@/components/ui/ProgressBar";
 import { resolveIcon } from "@/utils/iconMap";
 import { formatCurrency } from "@/utils/formatters";
 import { getBudgetStatus, getProgressPct } from "@/utils/status";
+import { useAppContext } from "@/context/AppContext";
 
 const TONE_ICON_BG = {
   accent: "bg-accent-soft text-accent",
@@ -42,13 +43,17 @@ const STATUS_LABEL = {
  * @param {import('@/data/budgetData').BudgetCategory} props.category
  */
 export default function BudgetCard({ category }) {
+  const { openBudgetModal } = useAppContext();
   const Icon = resolveIcon(category.icon);
   const pct = getProgressPct(category.spent, category.budget);
   const remaining = category.budget - category.spent;
   const status = getBudgetStatus(pct);
 
   return (
-    <div className="rounded-card border border-border bg-surface-raised p-3.5 transition-transform duration-200 hover:-translate-y-0.5">
+    <div
+      onClick={() => openBudgetModal(category)}
+      className="cursor-pointer rounded-card border border-border bg-surface-raised p-3.5 transition-transform duration-200 hover:-translate-y-0.5 hover:border-accent/40"
+    >
       <div className="mb-3 flex items-center justify-between">
         <div className={`flex h-7 w-7 items-center justify-center rounded-chip ${TONE_ICON_BG[category.tone]}`}>
           <Icon size={13} />

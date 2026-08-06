@@ -5,10 +5,11 @@ import Card from "@/components/ui/Card";
 import SectionTitle from "@/components/common/SectionTitle";
 import EmptyState from "@/components/common/EmptyState";
 import LendCard from "@/components/cards/LendCard";
+import Button from "@/components/ui/Button";
 import { useAppContext } from "@/context/AppContext";
 
 export default function BorrowLendPage() {
-  const { borrowLendRecords } = useAppContext();
+  const { borrowLendRecords, openBorrowLendModal } = useAppContext();
   const lent = borrowLendRecords.filter((r) => r.type === "lent");
   const borrowed = borrowLendRecords.filter((r) => r.type === "borrowed");
   const totalLent = lent.reduce((sum, r) => sum + r.amount, 0);
@@ -19,6 +20,11 @@ export default function BorrowLendPage() {
       <PageHeader
         title="Borrow & Lend"
         description="Money you've lent to others, and money you owe back."
+        action={
+          <Button variant="primary" size="sm" onClick={() => openBorrowLendModal()}>
+            + Add Record
+          </Button>
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

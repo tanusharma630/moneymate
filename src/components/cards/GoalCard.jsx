@@ -1,18 +1,23 @@
-import { Clock, Trophy } from "lucide-react";
+import { Trophy, Plus } from "lucide-react";
 import ProgressRing from "@/components/ui/ProgressRing";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { formatCurrency } from "@/utils/formatters";
 import { getProgressPct } from "@/utils/status";
 import { cn } from "@/utils/cn";
 import { THEME } from "@/constants/theme";
+import { useAppContext } from "@/context/AppContext";
 
 /**
  * @param {Object} props
  * @param {import('@/data/goalsData').SavingsGoal} props.goal
  */
 export default function GoalCard({ goal }) {
-  const pct = getProgressPct(goal.saved, goal.target);
-  const remaining = goal.target - goal.saved;
+  const { openGoalModal } = useAppContext();
+  const titleName = goal.title || goal.name;
+  const targetVal = goal.target || 1;
+  const savedVal = goal.saved || 0;
+  const pct = getProgressPct(savedVal, targetVal);
+  const remaining = Math.max(0, targetVal - savedVal);
   const achieved = pct >= 80;
   const reached = pct >= 100;
 
@@ -32,11 +37,16 @@ export default function GoalCard({ goal }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-chip bg-gradient-to-br from-accent-soft to-white/[0.02] text-lg">
-            {goal.emoji}
+            {goal.emoji || "🎯"}
           </div>
           <div>
-            <div className="text-[13px] font-medium text-text-primary">{goal.name}</div>
-            <div className="text-[10.5px] text-text-tertiary">Est. completion {goal.targetDate}</div>
+            <div
+              onClick={() => openGoalModal("create", goal)}
+              className="cursor-pointer text-[13px] font-medium text-text-primary hover:text-accent hover:underline"
+            >
+              {titleName}
+            </div>
+            <div className="text-[10.5px] text-text-tertiary">Est. completion {goal.targetDate || "Dec 2026"}</div>
           </div>
         </div>
         <div className="relative flex items-center justify-center">
@@ -50,16 +60,20 @@ export default function GoalCard({ goal }) {
       <div className="flex items-end justify-between">
         <div>
           <div className="mono text-[16px] font-semibold text-text-primary">
-            {formatCurrency(goal.saved)}
+            {formatCurrency(savedVal)}
           </div>
           <div className="text-[10.5px] text-text-tertiary">
-            {formatCurrency(remaining)} remaining of {formatCurrency(goal.target)}
+            {formatCurrency(remaining)} remaining of {formatCurrency(targetVal)}
           </div>
         </div>
-        <div className="flex items-center gap-1 text-text-secondary">
-          <Clock size={11} />
-          <span className="mono text-[11px]">{goal.daysLeft}d left</span>
-        </div>
+
+        <button
+          type="button"
+          onClick={() => openGoalModal("deposit", goal)}
+          className="flex items-center gap-1 rounded-chip border border-accent/30 bg-accent-soft px-2.5 py-1 text-[11px] font-medium text-accent hover:bg-accent hover:text-white transition-colors"
+        >
+          <Plus size={12} /> Add funds
+        </button>
       </div>
     </div>
   );

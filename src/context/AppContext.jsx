@@ -12,6 +12,15 @@ const AppContext = createContext(undefined);
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+const loadFromStorage = (key, fallback) => {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 /**
  * Global AppProvider implementing the finance state system, Quick Add modals,
  * and toast alert dispatchers.
@@ -26,22 +35,55 @@ export function AppProvider({ children }) {
     return () => clearTimeout(timer);
   }, []);
 
-  // Core Financial States
-  const [transactions, setTransactions] = useState(initialTransactions);
-  const [budgetCategories, setBudgetCategories] = useState(initialBudgetCategories);
-  const [savingsGoals, setSavingsGoals] = useState(initialSavingsGoals);
-  const [borrowLendRecords, setBorrowLendRecords] = useState(initialBorrowLendRecords);
-  const [summaryMetrics, setSummaryMetrics] = useState(initialSummaryMetrics);
+  // Core Financial States (backed by localStorage)
+  const [transactions, setTransactions] = useState(() => loadFromStorage("moneymate_transactions", initialTransactions));
+  const [budgetCategories, setBudgetCategories] = useState(() => loadFromStorage("moneymate_budgetCategories", initialBudgetCategories));
+  const [savingsGoals, setSavingsGoals] = useState(() => loadFromStorage("moneymate_savingsGoals", initialSavingsGoals));
+  const [borrowLendRecords, setBorrowLendRecords] = useState(() => loadFromStorage("moneymate_borrowLendRecords", initialBorrowLendRecords));
+  const [summaryMetrics, setSummaryMetrics] = useState(() => loadFromStorage("moneymate_summaryMetrics", initialSummaryMetrics));
   const [trendData, setTrendData] = useState(initialTrendData);
   const [sparklines, setSparklines] = useState(initialSparklines);
-  const [profile, setProfile] = useState(initialProfile);
+  const [profile, setProfile] = useState(() => loadFromStorage("moneymate_profile", initialProfile));
   const [notifications, setNotifications] = useState(initialNotifications);
-  const [coachInsight, setCoachInsight] = useState(initialCoachInsight);
+  const [coachInsight] = useState(initialCoachInsight);
+
+  // Persist financial states
+  useEffect(() => {
+    try { localStorage.setItem("moneymate_transactions", JSON.stringify(transactions)); } catch { /* noop */ }
+  }, [transactions]);
+  useEffect(() => {
+    try { localStorage.setItem("moneymate_budgetCategories", JSON.stringify(budgetCategories)); } catch { /* noop */ }
+  }, [budgetCategories]);
+  useEffect(() => {
+    try { localStorage.setItem("moneymate_savingsGoals", JSON.stringify(savingsGoals)); } catch { /* noop */ }
+  }, [savingsGoals]);
+  useEffect(() => {
+    try { localStorage.setItem("moneymate_borrowLendRecords", JSON.stringify(borrowLendRecords)); } catch { /* noop */ }
+  }, [borrowLendRecords]);
+  useEffect(() => {
+    try { localStorage.setItem("moneymate_summaryMetrics", JSON.stringify(summaryMetrics)); } catch { /* noop */ }
+  }, [summaryMetrics]);
+  useEffect(() => {
+    try { localStorage.setItem("moneymate_profile", JSON.stringify(profile)); } catch { /* noop */ }
+  }, [profile]);
 
   // Interactive UI Modal & Toast States
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [quickAddType, setQuickAddType] = useState("income");
   const [toast, setToast] = useState(null);
+
+  // Budget Modal State
+  const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
+  const [selectedBudgetCategory, setSelectedBudgetCategory] = useState(null);
+
+  // Goal Modal State
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState(null);
+  const [goalModalMode, setGoalModalMode] = useState("create"); // 'create' | 'deposit'
+
+  // Borrow/Lend Modal State
+  const [isBorrowLendModalOpen, setIsBorrowLendModalOpen] = useState(false);
+  const [selectedBorrowLendRecord, setSelectedBorrowLendRecord] = useState(null);
 
   // Global Search
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -283,19 +325,31 @@ export function AppProvider({ children }) {
 
     if (txData.type === "expense") {
       const matchedCategory = budgetCategories.find(c => c.name.toLowerCase() === txData.category.toLowerCase());
-      if (matchedCategory) {
+      if (matchedCategory && matchedCategory.budget > 0) {
         const nextSpent = matchedCategory.spent + amountVal;
         const limitPct = Math.round((nextSpent / matchedCategory.budget) * 100);
-        if (limitPct >= 90) {
+        if (limitPct >= 100) {
           setNotifications((prev) => [
             {
               id: `n-${Date.now()}`,
-              text: `Your ${matchedCategory.name} budget is at ${limitPct}% — close to the limit.`,
+              text: `Overbudget Alert: Your ${matchedCategory.name} budget has exceeded 100% (${limitPct}% spent).`,
+              time: "Just now",
+              tone: "danger",
+            },
+            ...prev,
+          ]);
+          showToast(`Alert: ${matchedCategory.name} budget exceeded! (${limitPct}%)`, "warning");
+        } else if (limitPct >= 80) {
+          setNotifications((prev) => [
+            {
+              id: `n-${Date.now()}`,
+              text: `Budget Alert: Your ${matchedCategory.name} budget has reached ${limitPct}%.`,
               time: "Just now",
               tone: "warning",
             },
-            ...prev
+            ...prev,
           ]);
+          showToast(`${matchedCategory.name} budget is at ${limitPct}%`, "info");
         }
       }
     } else {
@@ -485,6 +539,236 @@ export function AppProvider({ children }) {
     showToast("Profile settings updated successfully!", "success");
   }, [showToast]);
 
+  // Report Filters state
+  const [reportFilters, setReportFilters] = useState({
+    selectedMonth: "",
+    selectedYear: "",
+    category: "all",
+    type: "all",
+  });
+
+  // Derived computed stats across transactions, budgets, goals
+  const derivedStats = useMemo(() => {
+    const totalIncome = transactions.filter((t) => t.type === "income").reduce((s, t) => s + Math.abs(t.amount), 0);
+    const totalExpenses = transactions.filter((t) => t.type === "expense").reduce((s, t) => s + Math.abs(t.amount), 0);
+    const netCashFlow = totalIncome - totalExpenses;
+    
+    const totalBudget = budgetCategories.reduce((s, c) => s + (c.budget || 0), 0);
+    const totalSpent = budgetCategories.reduce((s, c) => s + (c.spent || 0), 0);
+    const overallBudgetPct = totalBudget > 0 ? Math.min(Math.round((totalSpent / totalBudget) * 100), 100) : 0;
+
+    const activeGoals = savingsGoals.filter((g) => !g.archived);
+    const totalGoalSaved = activeGoals.reduce((s, g) => s + (g.saved || 0), 0);
+    const totalGoalTarget = activeGoals.reduce((s, g) => s + (g.target || 0), 0);
+    const overallGoalPct = totalGoalTarget > 0 ? Math.min(Math.round((totalGoalSaved / totalGoalTarget) * 100), 100) : 0;
+
+    return {
+      totalIncome,
+      totalExpenses,
+      netCashFlow,
+      totalBudget,
+      totalSpent,
+      overallBudgetPct,
+      totalGoalSaved,
+      totalGoalTarget,
+      overallGoalPct,
+    };
+  }, [transactions, budgetCategories, savingsGoals]);
+
+  // Budget Actions
+  const openBudgetModal = useCallback((category = null) => {
+    setSelectedBudgetCategory(category);
+    setIsBudgetModalOpen(true);
+  }, []);
+
+  const closeBudgetModal = useCallback(() => {
+    setIsBudgetModalOpen(false);
+    setSelectedBudgetCategory(null);
+  }, []);
+
+  const addBudgetCategory = useCallback((categoryData) => {
+    const newCategory = {
+      id: `cat-${Date.now()}`,
+      name: categoryData.name,
+      budget: Number(categoryData.budget) || 0,
+      spent: 0,
+      icon: categoryData.icon || "ShoppingBag",
+      tone: categoryData.tone || "accent",
+      month: categoryData.month || "Jul",
+      notes: categoryData.notes || "",
+    };
+    setBudgetCategories((prev) => [...prev, newCategory]);
+    showToast(`Budget for "${categoryData.name}" created`, "success");
+  }, [showToast]);
+
+  const editBudgetCategory = useCallback((id, categoryData) => {
+    setBudgetCategories((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              name: categoryData.name || c.name,
+              budget: Number(categoryData.budget) || c.budget,
+              icon: categoryData.icon || c.icon,
+              tone: categoryData.tone || c.tone,
+              month: categoryData.month || c.month,
+              notes: categoryData.notes || c.notes,
+            }
+          : c
+      )
+    );
+    showToast("Budget category updated successfully", "success");
+  }, [showToast]);
+
+  const deleteBudgetCategory = useCallback((id) => {
+    setBudgetCategories((prev) => prev.filter((c) => c.id !== id));
+    showToast("Budget category deleted", "success");
+  }, [showToast]);
+
+  // Savings Goal Actions
+  const openGoalModal = useCallback((mode = "create", goal = null) => {
+    setGoalModalMode(mode);
+    setSelectedGoal(goal);
+    setIsGoalModalOpen(true);
+  }, []);
+
+  const closeGoalModal = useCallback(() => {
+    setIsGoalModalOpen(false);
+    setSelectedGoal(null);
+    setGoalModalMode("create");
+  }, []);
+
+  const addSavingsGoal = useCallback((goalData) => {
+    const newGoal = {
+      id: `goal-${Date.now()}`,
+      title: goalData.title || goalData.name,
+      name: goalData.title || goalData.name,
+      saved: Number(goalData.saved) || 0,
+      target: Number(goalData.target) || 0,
+      category: goalData.category || "General",
+      icon: goalData.icon || "Target",
+      targetDate: goalData.targetDate || "Dec 2026",
+      priority: goalData.priority || "Medium",
+      notes: goalData.notes || "",
+      completed: false,
+      archived: false,
+    };
+    setSavingsGoals((prev) => [...prev, newGoal]);
+    showToast(`Savings goal "${newGoal.title}" created`, "success");
+  }, [showToast]);
+
+  const depositToGoal = useCallback((id, depositAmount) => {
+    const amount = Number(depositAmount) || 0;
+    setSavingsGoals((prev) =>
+      prev.map((g) => {
+        if (g.id === id) {
+          const nextSaved = g.saved + amount;
+          const targetVal = g.target || 1;
+          const prevPct = Math.floor((g.saved / targetVal) * 100);
+          const nextPct = Math.floor((nextSaved / targetVal) * 100);
+          const isComp = targetVal > 0 && nextSaved >= targetVal;
+
+          const milestones = [25, 50, 75, 100];
+          for (const m of milestones) {
+            if (prevPct < m && nextPct >= m) {
+              setNotifications((nPrev) => [
+                {
+                  id: `n-${Date.now()}-${m}`,
+                  text: `Milestone Reached: Saved ${m}% for "${g.title || g.name}"! 🎉`,
+                  time: "Just now",
+                  tone: "success",
+                },
+                ...nPrev,
+              ]);
+              showToast(`Milestone! ${m}% saved for "${g.title || g.name}"`, "success");
+            }
+          }
+
+          return { ...g, saved: nextSaved, completed: g.completed || isComp };
+        }
+        return g;
+      })
+    );
+    setSummaryMetrics((prev) => ({
+      ...prev,
+      savings: {
+        ...prev.savings,
+        value: prev.savings.value + amount,
+        updatedLabel: "Updated just now",
+      },
+    }));
+    showToast(`Deposited ₹${amount.toLocaleString()} to savings goal`, "success");
+  }, [showToast]);
+
+  const toggleGoalCompleted = useCallback((id) => {
+    setSavingsGoals((prev) =>
+      prev.map((g) => {
+        if (g.id === id) {
+          const nextState = !g.completed;
+          showToast(`Goal marked as ${nextState ? "completed" : "active"}`, "success");
+          return { ...g, completed: nextState };
+        }
+        return g;
+      })
+    );
+  }, [showToast]);
+
+  const archiveGoal = useCallback((id) => {
+    setSavingsGoals((prev) =>
+      prev.map((g) => (g.id === id ? { ...g, archived: true } : g))
+    );
+    showToast("Savings goal archived", "success");
+  }, [showToast]);
+
+  const deleteGoal = useCallback((id) => {
+    setSavingsGoals((prev) => prev.filter((g) => g.id !== id));
+    showToast("Savings goal removed", "success");
+  }, [showToast]);
+
+  // Borrow/Lend Actions
+  const openBorrowLendModal = useCallback((record = null) => {
+    setSelectedBorrowLendRecord(record);
+    setIsBorrowLendModalOpen(true);
+  }, []);
+
+  const closeBorrowLendModal = useCallback(() => {
+    setIsBorrowLendModalOpen(false);
+    setSelectedBorrowLendRecord(null);
+  }, []);
+
+  const addBorrowLendRecord = useCallback((recordData) => {
+    const newRecord = {
+      id: `bl-${Date.now()}`,
+      person: recordData.person,
+      type: recordData.type || "lent",
+      amount: Number(recordData.amount) || 0,
+      dueDate: recordData.dueDate || "Next month",
+      status: "pending",
+      avatarUrl: recordData.avatarUrl || null,
+      notes: recordData.notes || "",
+    };
+    setBorrowLendRecords((prev) => [newRecord, ...prev]);
+    showToast(`Borrow/Lend record for ${recordData.person} created`, "success");
+  }, [showToast]);
+
+  const toggleBorrowLendStatus = useCallback((id) => {
+    setBorrowLendRecords((prev) =>
+      prev.map((r) => {
+        if (r.id === id) {
+          const nextStatus = r.status === "settled" ? "pending" : "settled";
+          showToast(`Record status updated to ${nextStatus}`, "success");
+          return { ...r, status: nextStatus };
+        }
+        return r;
+      })
+    );
+  }, [showToast]);
+
+  const deleteBorrowLendRecord = useCallback((id) => {
+    setBorrowLendRecords((prev) => prev.filter((r) => r.id !== id));
+    showToast("Record deleted", "success");
+  }, [showToast]);
+
   const value = useMemo(
     () => ({
       dateRangeLabel,
@@ -503,6 +787,9 @@ export function AppProvider({ children }) {
       profile,
       notifications,
       coachInsight,
+      derivedStats,
+      reportFilters,
+      setReportFilters,
 
       // Modal & Toast Actions
       isQuickAddOpen,
@@ -516,6 +803,36 @@ export function AppProvider({ children }) {
       deleteTransaction,
       duplicateTransaction,
       updateProfile,
+
+      // Budget Modal & Actions
+      isBudgetModalOpen,
+      selectedBudgetCategory,
+      openBudgetModal,
+      closeBudgetModal,
+      addBudgetCategory,
+      editBudgetCategory,
+      deleteBudgetCategory,
+
+      // Goal Modal & Actions
+      isGoalModalOpen,
+      selectedGoal,
+      goalModalMode,
+      openGoalModal,
+      closeGoalModal,
+      addSavingsGoal,
+      depositToGoal,
+      toggleGoalCompleted,
+      archiveGoal,
+      deleteGoal,
+
+      // BorrowLend Modal & Actions
+      isBorrowLendModalOpen,
+      selectedBorrowLendRecord,
+      openBorrowLendModal,
+      closeBorrowLendModal,
+      addBorrowLendRecord,
+      toggleBorrowLendStatus,
+      deleteBorrowLendRecord,
 
       // Global Search
       isSearchOpen,
@@ -544,6 +861,8 @@ export function AppProvider({ children }) {
       profile,
       notifications,
       coachInsight,
+      derivedStats,
+      reportFilters,
       isQuickAddOpen,
       quickAddType,
       openQuickAdd,
@@ -555,6 +874,30 @@ export function AppProvider({ children }) {
       deleteTransaction,
       duplicateTransaction,
       updateProfile,
+      isBudgetModalOpen,
+      selectedBudgetCategory,
+      openBudgetModal,
+      closeBudgetModal,
+      addBudgetCategory,
+      editBudgetCategory,
+      deleteBudgetCategory,
+      isGoalModalOpen,
+      selectedGoal,
+      goalModalMode,
+      openGoalModal,
+      closeGoalModal,
+      addSavingsGoal,
+      depositToGoal,
+      toggleGoalCompleted,
+      archiveGoal,
+      deleteGoal,
+      isBorrowLendModalOpen,
+      selectedBorrowLendRecord,
+      openBorrowLendModal,
+      closeBorrowLendModal,
+      addBorrowLendRecord,
+      toggleBorrowLendStatus,
+      deleteBorrowLendRecord,
       isSearchOpen,
       openSearch,
       closeSearch,
@@ -569,9 +912,10 @@ export function AppProvider({ children }) {
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
-/** @returns {{ dateRangeLabel: string, setDateRangeLabel: Function, isInitialLoading: boolean, setIsInitialLoading: Function, transactions: Array, budgetCategories: Array, savingsGoals: Array, borrowLendRecords: Array, summaryMetrics: Object, trendData: Object, sparklines: Object, profile: Object, notifications: Array, coachInsight: Object, isQuickAddOpen: boolean, quickAddType: string, openQuickAdd: Function, closeQuickAdd: Function, toast: Object, showToast: Function, addTransaction: Function, editTransaction: Function, deleteTransaction: Function, duplicateTransaction: Function, updateProfile: Function }} */
+/** @returns {{ dateRangeLabel: string, setDateRangeLabel: Function, isInitialLoading: boolean, setIsInitialLoading: Function, transactions: Array, budgetCategories: Array, savingsGoals: Array, borrowLendRecords: Array, summaryMetrics: Object, trendData: Object, sparklines: Object, profile: Object, notifications: Array, coachInsight: Object, derivedStats: Object, reportFilters: Object, setReportFilters: Function, isQuickAddOpen: boolean, quickAddType: string, openQuickAdd: Function, closeQuickAdd: Function, toast: Object, showToast: Function, addTransaction: Function, editTransaction: Function, deleteTransaction: Function, duplicateTransaction: Function, updateProfile: Function }} */
 export function useAppContext() {
   const ctx = useContext(AppContext);
   if (!ctx) throw new Error("useAppContext must be used within an AppProvider");
   return ctx;
 }
+

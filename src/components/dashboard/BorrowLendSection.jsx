@@ -1,4 +1,4 @@
-import { HandCoins, MoreHorizontal } from "lucide-react";
+import { HandCoins } from "lucide-react";
 import Card from "@/components/ui/Card";
 import SectionTitle from "@/components/common/SectionTitle";
 import EmptyState from "@/components/common/EmptyState";
@@ -6,7 +6,8 @@ import LendCard from "@/components/cards/LendCard";
 import { useAppContext } from "@/context/AppContext";
 
 export default function BorrowLendSection() {
-  const { borrowLendRecords } = useAppContext();
+  const { borrowLendRecords, openBorrowLendModal } = useAppContext();
+
   if (borrowLendRecords.length === 0) {
     return (
       <Card className="xl:col-span-5">
@@ -15,6 +16,8 @@ export default function BorrowLendSection() {
           icon={HandCoins}
           title="Nothing outstanding"
           subtitle="Money you lend or borrow from friends and family will show up here."
+          actionLabel="Add record"
+          onAction={() => openBorrowLendModal()}
         />
       </Card>
     );
@@ -24,7 +27,15 @@ export default function BorrowLendSection() {
     <Card className="xl:col-span-5">
       <SectionTitle
         title="Borrow & Lend"
-        action={<MoreHorizontal size={15} className="text-text-tertiary" />}
+        action={
+          <button
+            type="button"
+            onClick={() => openBorrowLendModal()}
+            className="text-[11.5px] font-medium text-accent hover:underline"
+          >
+            + Add record
+          </button>
+        }
       />
       <div className="flex flex-col">
         {borrowLendRecords.map((record, i) => (

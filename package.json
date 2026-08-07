@@ -5,7 +5,9 @@
   "type": "module",
   "description": "MoneyMate — Personal Finance Management System (frontend)",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently \"npm --prefix moneymate-backend run dev\" \"vite\"",
+    "dev:frontend": "vite",
+    "dev:backend": "npm --prefix moneymate-backend run dev",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint ."
@@ -30,6 +32,7 @@
     "@eslint/js": "^9.17.0",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "concurrently": "^10.0.4",
     "eslint": "^9.17.0",
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.1.0",

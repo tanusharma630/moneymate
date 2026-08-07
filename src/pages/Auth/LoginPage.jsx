@@ -26,8 +26,8 @@ export default function LoginPage() {
   } = useForm({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "anvi@example.com",
-      password: "Password123",
+      email: "",
+      password: "",
       rememberMe: true,
     },
   });

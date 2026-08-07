@@ -40,7 +40,6 @@ export default function ProfileSettingsForm() {
     try {
       await updateUserProfile(values);
       updateProfile(values);
-      localStorage.setItem("moneymate_profile", JSON.stringify(values));
       showToast("Profile settings saved successfully", "success");
     } catch (err) {
       showToast(err.message || "Failed to update profile", "error");

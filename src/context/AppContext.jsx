@@ -12,6 +12,7 @@ import { fetchTransactions, createTransactionApi, updateTransactionApi, deleteTr
 import { fetchBudgets, createBudgetApi, updateBudgetApi, deleteBudgetApi } from "@/services/budgetService";
 import { fetchSavingsGoals, createSavingsGoalApi, updateSavingsGoalApi, deleteSavingsGoalApi } from "@/services/savingsService";
 import { fetchDashboardSummary } from "@/services/dashboardService";
+import { fetchAIInsights } from "@/services/aiService";
 import { migrateLocalStorageData } from "@/services/migrationService";
 
 const AppContext = createContext(undefined);
@@ -28,7 +29,7 @@ const EMPTY_SUMMARY = {
 
 /**
  * Global AppProvider implementing the finance state system, Quick Add modals,
- * and toast alert dispatchers with MongoDB backend sync.
+ * AI Assistant, and toast alert dispatchers with MongoDB backend sync.
  */
 export function AppProvider({ children }) {
   const { user } = useAuth();
@@ -53,6 +54,19 @@ export function AppProvider({ children }) {
   const [profile, setProfile] = useState(initialProfile);
   const [notifications, setNotifications] = useState([]);
   const [coachInsight] = useState(initialCoachInsight);
+  const [aiInsights, setAiInsights] = useState(null);
+
+  const refreshAIInsights = useCallback(async () => {
+    if (!user) return;
+    try {
+      const data = await fetchAIInsights();
+      if (data) {
+        setAiInsights(data);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [user]);
 
   // Fetch data from MongoDB & perform one-time localStorage migration if present
   useEffect(() => {
@@ -66,6 +80,7 @@ export function AppProvider({ children }) {
         setSummaryMetrics(EMPTY_SUMMARY);
         setProfile(initialProfile);
         setNotifications([]);
+        setAiInsights(null);
         return;
       }
 
@@ -100,11 +115,12 @@ export function AppProvider({ children }) {
 
       // Fetch live data from MongoDB
       try {
-        const [dashData, txs, bdg, sav] = await Promise.all([
+        const [dashData, txs, bdg, sav, aiData] = await Promise.all([
           fetchDashboardSummary().catch(() => null),
           fetchTransactions().catch(() => []),
           fetchBudgets().catch(() => []),
           fetchSavingsGoals().catch(() => []),
+          fetchAIInsights().catch(() => null),
         ]);
 
         if (!isMounted) return;
@@ -112,6 +128,10 @@ export function AppProvider({ children }) {
         setTransactions(txs || []);
         setBudgetCategories(bdg || []);
         setSavingsGoals(sav || []);
+
+        if (aiData) {
+          setAiInsights(aiData);
+        }
 
         if (dashData && dashData.summaryMetrics) {
           setSummaryMetrics(dashData.summaryMetrics);
@@ -345,11 +365,12 @@ export function AppProvider({ children }) {
         }
 
         showToast(`Successfully added ${txData.type} of ₹${amountVal.toLocaleString()}`, "success");
+        refreshAIInsights();
       } catch (err) {
         showToast(`Failed to save transaction: ${err.message}`, "danger");
       }
     },
-    [showToast]
+    [showToast, refreshAIInsights]
   );
 
   const editTransaction = useCallback(
@@ -435,11 +456,12 @@ export function AppProvider({ children }) {
         }
 
         showToast("Transaction updated successfully", "success");
+        refreshAIInsights();
       } catch (err) {
         showToast(`Failed to update transaction: ${err.message}`, "danger");
       }
     },
-    [transactions, showToast]
+    [transactions, showToast, refreshAIInsights]
   );
 
   const deleteTransaction = useCallback(
@@ -483,11 +505,12 @@ export function AppProvider({ children }) {
         }
 
         showToast("Transaction deleted successfully", "success");
+        refreshAIInsights();
       } catch (err) {
         showToast(`Failed to delete transaction: ${err.message}`, "danger");
       }
     },
-    [transactions, showToast]
+    [transactions, showToast, refreshAIInsights]
   );
 
   const duplicateTransaction = useCallback(
@@ -647,11 +670,12 @@ export function AppProvider({ children }) {
         const created = await createBudgetApi(payload);
         setBudgetCategories((prev) => [...prev, created]);
         showToast(`Budget for "${categoryData.name}" created`, "success");
+        refreshAIInsights();
       } catch (err) {
         showToast(`Failed to create budget: ${err.message}`, "danger");
       }
     },
-    [showToast]
+    [showToast, refreshAIInsights]
   );
 
   const editBudgetCategory = useCallback(
@@ -669,11 +693,12 @@ export function AppProvider({ children }) {
         const updated = await updateBudgetApi(targetId, payload);
         setBudgetCategories((prev) => prev.map((c) => (c.id === targetId || c._id === targetId ? updated : c)));
         showToast("Budget category updated successfully", "success");
+        refreshAIInsights();
       } catch (err) {
         showToast(`Failed to update budget: ${err.message}`, "danger");
       }
     },
-    [showToast]
+    [showToast, refreshAIInsights]
   );
 
   const deleteBudgetCategory = useCallback(
@@ -682,11 +707,12 @@ export function AppProvider({ children }) {
         await deleteBudgetApi(id);
         setBudgetCategories((prev) => prev.filter((c) => c.id !== id && c._id !== id));
         showToast("Budget category deleted", "success");
+        refreshAIInsights();
       } catch (err) {
         showToast(`Failed to delete budget: ${err.message}`, "danger");
       }
     },
-    [showToast]
+    [showToast, refreshAIInsights]
   );
 
   // Savings Goal Actions
@@ -721,11 +747,12 @@ export function AppProvider({ children }) {
         const created = await createSavingsGoalApi(payload);
         setSavingsGoals((prev) => [...prev, created]);
         showToast(`Savings goal "${created.title}" created`, "success");
+        refreshAIInsights();
       } catch (err) {
         showToast(`Failed to create savings goal: ${err.message}`, "danger");
       }
     },
-    [showToast]
+    [showToast, refreshAIInsights]
   );
 
   const depositToGoal = useCallback(
@@ -751,11 +778,12 @@ export function AppProvider({ children }) {
           },
         }));
         showToast(`Deposited ₹${amount.toLocaleString()} to savings goal`, "success");
+        refreshAIInsights();
       } catch (err) {
         showToast(`Failed to deposit to savings goal: ${err.message}`, "danger");
       }
     },
-    [savingsGoals, showToast]
+    [savingsGoals, showToast, refreshAIInsights]
   );
 
   const toggleGoalCompleted = useCallback(
@@ -768,11 +796,12 @@ export function AppProvider({ children }) {
         const updated = await updateSavingsGoalApi(targetId, { completed: nextState });
         setSavingsGoals((prev) => prev.map((g) => (g.id === targetId || g._id === targetId ? updated : g)));
         showToast(`Goal marked as ${nextState ? "completed" : "active"}`, "success");
+        refreshAIInsights();
       } catch (err) {
         showToast(`Failed to update goal state: ${err.message}`, "danger");
       }
     },
-    [savingsGoals, showToast]
+    [savingsGoals, showToast, refreshAIInsights]
   );
 
   const archiveGoal = useCallback(
@@ -783,11 +812,12 @@ export function AppProvider({ children }) {
         const updated = await updateSavingsGoalApi(targetId, { archived: true });
         setSavingsGoals((prev) => prev.map((g) => (g.id === targetId || g._id === targetId ? updated : g)));
         showToast("Savings goal archived", "success");
+        refreshAIInsights();
       } catch (err) {
         showToast(`Failed to archive goal: ${err.message}`, "danger");
       }
     },
-    [savingsGoals, showToast]
+    [savingsGoals, showToast, refreshAIInsights]
   );
 
   const deleteGoal = useCallback(
@@ -798,11 +828,12 @@ export function AppProvider({ children }) {
         await deleteSavingsGoalApi(targetId);
         setSavingsGoals((prev) => prev.filter((g) => g.id !== targetId && g._id !== targetId));
         showToast("Savings goal removed", "success");
+        refreshAIInsights();
       } catch (err) {
         showToast(`Failed to remove goal: ${err.message}`, "danger");
       }
     },
-    [savingsGoals, showToast]
+    [savingsGoals, showToast, refreshAIInsights]
   );
 
   // Borrow/Lend Actions
@@ -878,6 +909,8 @@ export function AppProvider({ children }) {
       profile,
       notifications,
       coachInsight,
+      aiInsights,
+      refreshAIInsights,
       derivedStats,
       reportFilters,
       setReportFilters,
@@ -953,6 +986,8 @@ export function AppProvider({ children }) {
       profile,
       notifications,
       coachInsight,
+      aiInsights,
+      refreshAIInsights,
       derivedStats,
       reportFilters,
       isQuickAddOpen,

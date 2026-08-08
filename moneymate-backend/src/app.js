@@ -10,6 +10,7 @@ import savingsRoutes from "./routes/savingsRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import migrationRoutes from "./routes/migrationRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
 import { notFoundHandler } from "./middleware/notFoundHandler.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
@@ -45,6 +46,7 @@ app.use("/api/savings", savingsRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/data", migrationRoutes);
+app.use("/api/ai", aiRoutes);
 
 // Error Handling Middlewares
 app.use(notFoundHandler);

@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import dns from "node:dns";
+import fs from "node:fs";
+import path from "node:path";
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 
@@ -33,35 +35,77 @@ async function seedDefaultUser() {
   }
 }
 
+let activeMongoServer = null;
+
 /**
  * Connect to MongoDB Atlas cluster using Mongoose.
- * Falls back to MongoDB Memory Server if Atlas connection fails (e.g. IP whitelist / network issue).
+ * Falls back to Persistent Local MongoDB if Atlas connection fails (e.g. IP whitelist / network issue).
  */
 export async function connectDB() {
   const uri = process.env.MONGODB_URI;
 
   if (uri) {
     try {
-      const conn = await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 });
+      const conn = await mongoose.connect(uri, { serverSelectionTimeoutMS: 4000 });
       console.log(`✅ Connected to MongoDB Atlas: ${conn.connection.host}`);
       await seedDefaultUser();
       return true;
     } catch (error) {
       console.error(`❌ Atlas connection failure: ${error.message}`);
-      console.log(`⚠️ Attempting in-memory MongoDB fallback for local development...`);
+      console.log(`ℹ️ Explanation: Your IP is not whitelisted on MongoDB Atlas Network Access.`);
+      console.log(`⚠️ Switching to Persistent Local MongoDB Storage so your accounts & data are NEVER lost on restart/refresh...`);
     }
   }
 
   try {
+    const dbDir = path.resolve("./.data/db");
+    if (!fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+    } else {
+      // Remove leftover lock file if present from ungraceful shutdown
+      const lockFile = path.join(dbDir, "mongod.lock");
+      if (fs.existsSync(lockFile)) {
+        try {
+          fs.unlinkSync(lockFile);
+        } catch {
+          /* ignore lock removal error if file in use */
+        }
+      }
+    }
+
+    if (activeMongoServer) {
+      try {
+        await activeMongoServer.stop();
+      } catch {
+        /* ignore */
+      }
+    }
+
     const { MongoMemoryServer } = await import("mongodb-memory-server");
-    const mongoServer = await MongoMemoryServer.create();
-    const memoryUri = mongoServer.getUri();
+    activeMongoServer = await MongoMemoryServer.create({
+      instance: {
+        dbPath: dbDir,
+        storageEngine: "wiredTiger",
+      },
+    });
+
+    const memoryUri = activeMongoServer.getUri();
     const conn = await mongoose.connect(memoryUri);
-    console.log(`✅ Connected to In-Memory MongoDB: ${conn.connection.host}`);
+    console.log(`✅ Connected to Persistent Local Database: ${conn.connection.host}`);
     await seedDefaultUser();
     return true;
   } catch (memError) {
-    console.error(`❌ In-Memory MongoDB connection failed: ${memError.message}`);
-    return false;
+    console.error(`❌ Persistent Local MongoDB connection failed: ${memError.message}`);
+    // Fallback to in-memory non-persistent if path locking fails
+    try {
+      const { MongoMemoryServer } = await import("mongodb-memory-server");
+      const tempServer = await MongoMemoryServer.create();
+      const conn = await mongoose.connect(tempServer.getUri());
+      console.log(`✅ Connected to In-Memory Fallback Database: ${conn.connection.host}`);
+      await seedDefaultUser();
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

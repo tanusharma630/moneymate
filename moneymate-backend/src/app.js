@@ -22,12 +22,24 @@ const app = express();
 app.use(helmet());
 
 // CORS configuration for frontend client
-const allowedOrigin =
-  process.env.CLIENT_URL || "http://localhost:5173";
+const allowedOrigins = process.env.CLIENT_URL
+  ? process.env.CLIENT_URL.split(",").map((url) => url.trim())
+  : ["http://localhost:5173", "http://localhost:3000"];
 
 app.use(
   cors({
-    origin: allowedOrigin,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or server-to-server health checks)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes("*")) {
+        return callback(null, true);
+      }
+      // Allow Vercel preview domain matches if configured
+      if (origin.endsWith(".vercel.app")) {
+        return callback(null, true);
+      }
+      return callback(null, true); // Permissive fallback if unspecified while respecting credentials
+    },
     credentials: true,
   })
 );

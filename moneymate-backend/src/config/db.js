@@ -39,11 +39,30 @@ let activeMongoServer = null;
 
 /**
  * Connect to MongoDB Atlas cluster using Mongoose.
- * Falls back to Persistent Local MongoDB if Atlas connection fails (e.g. IP whitelist / network issue).
+ * In production (NODE_ENV === 'production' or process.env.RENDER), MONGODB_URI is strictly required,
+ * and failure to connect will fail the process cleanly without fallback.
  */
 export async function connectDB() {
+  const isProduction = process.env.NODE_ENV === "production" || !!process.env.RENDER;
   const uri = process.env.MONGODB_URI;
 
+  if (isProduction) {
+    if (!uri) {
+      console.error("❌ MONGODB_URI environment variable is missing in production.");
+      throw new Error("Fatal DB Error: MONGODB_URI environment variable is required in production.");
+    }
+    try {
+      const conn = await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 });
+      console.log(`✅ Connected to MongoDB Atlas: ${conn.connection.host}`);
+      await seedDefaultUser();
+      return true;
+    } catch (error) {
+      console.error(`❌ MongoDB Atlas connection failed in production: ${error.message}`);
+      throw new Error(`Fatal DB Error: Could not connect to MongoDB Atlas in production. ${error.message}`);
+    }
+  }
+
+  // Development mode fallback
   if (uri) {
     try {
       const conn = await mongoose.connect(uri, { serverSelectionTimeoutMS: 4000 });
@@ -51,9 +70,8 @@ export async function connectDB() {
       await seedDefaultUser();
       return true;
     } catch (error) {
-      console.error(`❌ Atlas connection failure: ${error.message}`);
-      console.log(`ℹ️ Explanation: Your IP is not whitelisted on MongoDB Atlas Network Access.`);
-      console.log(`⚠️ Switching to Persistent Local MongoDB Storage so your accounts & data are NEVER lost on restart/refresh...`);
+      console.error(`❌ Atlas connection failure in dev mode: ${error.message}`);
+      console.log(`⚠️ Development mode detected: Falling back to Local MongoDB storage...`);
     }
   }
 
@@ -62,13 +80,12 @@ export async function connectDB() {
     if (!fs.existsSync(dbDir)) {
       fs.mkdirSync(dbDir, { recursive: true });
     } else {
-      // Remove leftover lock file if present from ungraceful shutdown
       const lockFile = path.join(dbDir, "mongod.lock");
       if (fs.existsSync(lockFile)) {
         try {
           fs.unlinkSync(lockFile);
         } catch {
-          /* ignore lock removal error if file in use */
+          /* ignore lock removal error */
         }
       }
     }
@@ -96,7 +113,6 @@ export async function connectDB() {
     return true;
   } catch (memError) {
     console.error(`❌ Persistent Local MongoDB connection failed: ${memError.message}`);
-    // Fallback to in-memory non-persistent if path locking fails
     try {
       const { MongoMemoryServer } = await import("mongodb-memory-server");
       const tempServer = await MongoMemoryServer.create();

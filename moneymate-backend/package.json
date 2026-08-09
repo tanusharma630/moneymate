@@ -5,9 +5,8 @@
   "main": "src/server.js",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite",
-    "preview": "vite preview"
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

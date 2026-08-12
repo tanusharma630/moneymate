@@ -174,13 +174,13 @@ export default function TransactionsList({
           <div className="flex flex-col">
             {filteredAndSortedTransactions.map((transaction, i) => (
               <TransactionCard
-                key={transaction.id}
+                key={transaction.id || transaction._id}
                 transaction={transaction}
                 isFirst={i === 0}
                 onView={(tx) => setViewingTx(tx)}
                 onEdit={(tx) => setEditingTx(tx)}
                 onDelete={(tx) => setDeletingTx(tx)}
-                onDuplicate={(tx) => duplicateTransaction(tx.id)}
+                onDuplicate={(tx) => duplicateTransaction(tx.id || tx._id)}
               />
             ))}
           </div>
@@ -212,7 +212,7 @@ export default function TransactionsList({
         defaultType={editingTx?.type || "income"}
         onSubmit={(values) => {
           if (editingTx) {
-            editTransaction(editingTx.id, values);
+            editTransaction(editingTx.id || editingTx._id, values);
           }
         }}
         title="Edit Transaction"
@@ -225,7 +225,7 @@ export default function TransactionsList({
         merchantName={deletingTx?.merchant}
         onConfirm={() => {
           if (deletingTx) {
-            deleteTransaction(deletingTx.id);
+            deleteTransaction(deletingTx.id || deletingTx._id);
           }
         }}
       />

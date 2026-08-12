@@ -34,7 +34,7 @@ const EMPTY_SUMMARY = {
 export function AppProvider({ children }) {
   const { user } = useAuth();
 
-  const [dateRangeLabel, setDateRangeLabel] = useState("July 2026");
+  const [dateRangeLabel, setDateRangeLabel] = useState("All Time");
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Auto-complete initial loading state shortly after mount
@@ -657,10 +657,14 @@ export function AppProvider({ children }) {
 
   const addBudgetCategory = useCallback(
     async (categoryData) => {
+      const existingSpent = transactions
+        .filter((t) => t.type === "expense" && t.category?.toLowerCase() === categoryData.name?.toLowerCase())
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
       const payload = {
         name: categoryData.name,
         budget: Number(categoryData.budget) || 0,
-        spent: 0,
+        spent: existingSpent,
         icon: categoryData.icon || "ShoppingBag",
         tone: categoryData.tone || "accent",
         month: categoryData.month || "Jul",
@@ -675,7 +679,7 @@ export function AppProvider({ children }) {
         showToast(`Failed to create budget: ${err.message}`, "danger");
       }
     },
-    [showToast, refreshAIInsights]
+    [transactions, showToast, refreshAIInsights]
   );
 
   const editBudgetCategory = useCallback(
@@ -750,6 +754,32 @@ export function AppProvider({ children }) {
         refreshAIInsights();
       } catch (err) {
         showToast(`Failed to create savings goal: ${err.message}`, "danger");
+      }
+    },
+    [showToast, refreshAIInsights]
+  );
+
+  const editSavingsGoal = useCallback(
+    async (id, goalData) => {
+      const targetId = id;
+      const payload = {
+        title: goalData.title || goalData.name,
+        name: goalData.title || goalData.name,
+        target: Number(goalData.target) || 0,
+        saved: Number(goalData.saved) || 0,
+        category: goalData.category || "General",
+        icon: goalData.icon || "Target",
+        targetDate: goalData.targetDate || "Dec 2026",
+        priority: goalData.priority || "Medium",
+        notes: goalData.notes || "",
+      };
+      try {
+        const updated = await updateSavingsGoalApi(targetId, payload);
+        setSavingsGoals((prev) => prev.map((g) => (g.id === targetId || g._id === targetId ? updated : g)));
+        showToast("Savings goal updated successfully", "success");
+        refreshAIInsights();
+      } catch (err) {
+        showToast(`Failed to update savings goal: ${err.message}`, "danger");
       }
     },
     [showToast, refreshAIInsights]
@@ -944,6 +974,7 @@ export function AppProvider({ children }) {
       openGoalModal,
       closeGoalModal,
       addSavingsGoal,
+      editSavingsGoal,
       depositToGoal,
       toggleGoalCompleted,
       archiveGoal,
@@ -1014,6 +1045,7 @@ export function AppProvider({ children }) {
       openGoalModal,
       closeGoalModal,
       addSavingsGoal,
+      editSavingsGoal,
       depositToGoal,
       toggleGoalCompleted,
       archiveGoal,

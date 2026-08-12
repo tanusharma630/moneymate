@@ -85,7 +85,7 @@ export default function GoalsSection() {
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {filteredGoals.map((goal) => (
-            <GoalCard key={goal.id} goal={goal} />
+            <GoalCard key={goal.id || goal._id} goal={goal} />
           ))}
         </div>
       )}

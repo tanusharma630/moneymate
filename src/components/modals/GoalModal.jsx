@@ -10,7 +10,7 @@ const GOAL_ICONS = ["Laptop", "Umbrella", "ShieldCheck", "Car", "Plane", "Home",
 const PRIORITIES = ["High", "Medium", "Low"];
 
 export default function GoalModal() {
-  const { isGoalModalOpen, closeGoalModal, selectedGoal, goalModalMode, addSavingsGoal, depositToGoal, deleteGoal } = useAppContext();
+  const { isGoalModalOpen, closeGoalModal, selectedGoal, goalModalMode, addSavingsGoal, editSavingsGoal, depositToGoal, deleteGoal } = useAppContext();
   const titleRef = useRef(null);
 
   const {
@@ -67,8 +67,11 @@ export default function GoalModal() {
   }, [isGoalModalOpen, selectedGoal, goalModalMode, reset]);
 
   const onFormSubmit = (data) => {
+    const targetId = selectedGoal ? (selectedGoal.id || selectedGoal._id) : null;
     if (goalModalMode === "deposit" && selectedGoal) {
-      depositToGoal(selectedGoal.id, data.depositAmount);
+      depositToGoal(targetId, data.depositAmount);
+    } else if (selectedGoal) {
+      editSavingsGoal(targetId, data);
     } else {
       addSavingsGoal(data);
     }
@@ -77,7 +80,8 @@ export default function GoalModal() {
 
   const handleDelete = () => {
     if (selectedGoal) {
-      deleteGoal(selectedGoal.id);
+      const targetId = selectedGoal.id || selectedGoal._id;
+      deleteGoal(targetId);
       closeGoalModal();
     }
   };

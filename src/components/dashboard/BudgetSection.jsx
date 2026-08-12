@@ -42,7 +42,7 @@ export default function BudgetSection() {
       />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         {budgetCategories.map((category) => (
-          <BudgetCard key={category.id} category={category} />
+          <BudgetCard key={category.id || category._id} category={category} />
         ))}
       </div>
     </Card>

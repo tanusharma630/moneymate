@@ -62,7 +62,8 @@ export default function BudgetModal() {
 
   const onFormSubmit = (data) => {
     if (selectedBudgetCategory) {
-      editBudgetCategory(selectedBudgetCategory.id, data);
+      const targetId = selectedBudgetCategory.id || selectedBudgetCategory._id;
+      editBudgetCategory(targetId, data);
     } else {
       addBudgetCategory(data);
     }
@@ -71,7 +72,8 @@ export default function BudgetModal() {
 
   const handleDelete = () => {
     if (selectedBudgetCategory) {
-      deleteBudgetCategory(selectedBudgetCategory.id);
+      const targetId = selectedBudgetCategory.id || selectedBudgetCategory._id;
+      deleteBudgetCategory(targetId);
       closeBudgetModal();
     }
   };

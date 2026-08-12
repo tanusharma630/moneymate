@@ -41,7 +41,7 @@ export default function GoalCard({ goal }) {
           </div>
           <div>
             <div
-              onClick={() => openGoalModal("create", goal)}
+              onClick={() => openGoalModal("edit", goal)}
               className="cursor-pointer text-[13px] font-medium text-text-primary hover:text-accent hover:underline"
             >
               {titleName}

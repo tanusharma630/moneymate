@@ -14,7 +14,7 @@ export default defineConfig({
       filename: "sw.js",
       registerType: "autoUpdate",
       injectRegister: "auto",
-      includeAssets: ["favicon.svg", "apple-touch-icon.png"],
+      includeAssets: ["favicon.svg", "apple-touch-icon.png", "screenshot-desktop.png", "screenshot-mobile.png"],
       manifest: {
         name: "MoneyMate",
         short_name: "MoneyMate",
@@ -44,6 +44,22 @@ export default defineConfig({
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable",
+          },
+        ],
+        screenshots: [
+          {
+            src: "/screenshot-desktop.png",
+            sizes: "1280x720",
+            type: "image/png",
+            form_factor: "wide",
+            label: "MoneyMate Desktop Financial Dashboard",
+          },
+          {
+            src: "/screenshot-mobile.png",
+            sizes: "540x960",
+            type: "image/png",
+            form_factor: "narrow",
+            label: "MoneyMate Mobile App Overview",
           },
         ],
       },

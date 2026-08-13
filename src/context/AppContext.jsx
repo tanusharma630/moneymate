@@ -12,7 +12,7 @@ import { fetchTransactions, createTransactionApi, updateTransactionApi, deleteTr
 import { fetchBudgets, createBudgetApi, updateBudgetApi, deleteBudgetApi } from "@/services/budgetService";
 import { fetchSavingsGoals, createSavingsGoalApi, updateSavingsGoalApi, deleteSavingsGoalApi } from "@/services/savingsService";
 import { fetchDashboardSummary } from "@/services/dashboardService";
-import { fetchAIInsights } from "@/services/aiService";
+import { fetchAIInsights, applyAIRecommendationApi } from "@/services/aiService";
 import { migrateLocalStorageData } from "@/services/migrationService";
 
 const AppContext = createContext(undefined);
@@ -719,6 +719,65 @@ export function AppProvider({ children }) {
     [showToast, refreshAIInsights]
   );
 
+  const applyRecommendation = useCallback(
+    async (rec) => {
+      if (!rec || !rec.category) {
+        showToast("Unable to apply recommendation. Missing recommendation data.", "danger");
+        throw new Error("Invalid recommendation data");
+      }
+
+      try {
+        const res = await applyAIRecommendationApi({
+          category: rec.category,
+          recommendedBudget: rec.recommendedBudget,
+          reductionPercentage: rec.reductionPercentage,
+        });
+
+        if (res && res.budget) {
+          const updatedBudget = res.budget;
+          setBudgetCategories((prev) => {
+            const exists = prev.some(
+              (b) =>
+                b.id === updatedBudget.id ||
+                b._id === updatedBudget.id ||
+                b.name.toLowerCase() === updatedBudget.name.toLowerCase()
+            );
+            if (exists) {
+              return prev.map((b) =>
+                b.id === updatedBudget.id ||
+                b._id === updatedBudget.id ||
+                b.name.toLowerCase() === updatedBudget.name.toLowerCase()
+                  ? updatedBudget
+                  : b
+              );
+            } else {
+              return [...prev, updatedBudget];
+            }
+          });
+
+          setAiInsights((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              recommendation: {
+                ...(prev.recommendation || rec),
+                isApplied: true,
+              },
+            };
+          });
+
+          showToast("Recommendation applied successfully.", "success");
+          return res;
+        }
+      } catch (err) {
+        const errMsg = err.response?.data?.message || "Unable to apply recommendation. Please try again.";
+        showToast(errMsg, "danger");
+        throw err;
+      }
+    },
+    [showToast]
+  );
+
   // Savings Goal Actions
   const openGoalModal = useCallback((mode = "create", goal = null) => {
     setGoalModalMode(mode);
@@ -966,6 +1025,7 @@ export function AppProvider({ children }) {
       addBudgetCategory,
       editBudgetCategory,
       deleteBudgetCategory,
+      applyRecommendation,
 
       // Goal Modal & Actions
       isGoalModalOpen,
@@ -1039,6 +1099,7 @@ export function AppProvider({ children }) {
       addBudgetCategory,
       editBudgetCategory,
       deleteBudgetCategory,
+      applyRecommendation,
       isGoalModalOpen,
       selectedGoal,
       goalModalMode,

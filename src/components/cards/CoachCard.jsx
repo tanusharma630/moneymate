@@ -1,4 +1,5 @@
-import { Sparkles, ArrowRight, AlertTriangle, Lightbulb } from "lucide-react";
+import { useState } from "react";
+import { Sparkles, ArrowRight, AlertTriangle, Lightbulb, Check, Loader2 } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import HealthScoreBadge from "@/components/cards/HealthScoreBadge";
@@ -9,8 +10,36 @@ import { formatCurrency } from "@/utils/formatters";
  * Intelligent AI Coach component analyzing live MongoDB financial data.
  */
 export default function CoachCard() {
-  const { aiInsights, coachInsight } = useAppContext();
+  const { aiInsights, coachInsight, applyRecommendation } = useAppContext();
   const ai = aiInsights || coachInsight;
+
+  const [isApplying, setIsApplying] = useState(false);
+  const [justApplied, setJustApplied] = useState(false);
+
+  const recommendation = ai?.recommendation;
+  const isApplied = Boolean(recommendation?.isApplied || justApplied);
+
+  const handleApply = async () => {
+    if (isApplying || isApplied) return;
+    setIsApplying(true);
+    try {
+      if (recommendation) {
+        await applyRecommendation(recommendation);
+      } else {
+        // Fallback if recommendation object isn't fully structured yet
+        await applyRecommendation({
+          category: "Other",
+          recommendedBudget: 850,
+          reductionPercentage: 15,
+        });
+      }
+      setJustApplied(true);
+    } catch {
+      // Toast notification is handled in AppContext
+    } finally {
+      setIsApplying(false);
+    }
+  };
 
   return (
     <Card
@@ -87,8 +116,25 @@ export default function CoachCard() {
 
       <div className="mt-3 flex items-center justify-between">
         <span className="text-[10.5px] text-text-tertiary">Real-time MongoDB analysis</span>
-        <Button variant="soft" size="sm">
-          Apply <ArrowRight size={11} />
+        <Button
+          variant="soft"
+          size="sm"
+          onClick={handleApply}
+          disabled={isApplying || isApplied}
+        >
+          {isApplying ? (
+            <>
+              <Loader2 className="animate-spin" size={11} /> Applying...
+            </>
+          ) : isApplied ? (
+            <>
+              Applied <Check size={11} className="text-success" />
+            </>
+          ) : (
+            <>
+              Apply <ArrowRight size={11} />
+            </>
+          )}
         </Button>
       </div>
     </Card>

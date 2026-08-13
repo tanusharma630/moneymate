@@ -144,10 +144,37 @@ export const getAIInsights = async (req, res, next) => {
       suggestions.push(`You are close to achieving your "${closeToGoals[0].title || closeToGoals[0].name}" goal!`);
     }
 
+    // Mathematical Recommendation logic:
+    // Determine category, current spending, reduction percentage (15%), recommended budget & potential savings
+    let recommendation = null;
     let recommendedAction = "Keep maintaining your current savings pace to hit your financial targets.";
+
     if (highestCategory && highestCategory.amount > 0) {
-      const potSave = Math.round(highestCategory.amount * 0.15);
-      recommendedAction = `Reduce ${highestCategory.name} spending by 15% to save ₹${potSave.toLocaleString()} next month.`;
+      const existingBudget = budgets.find(
+        (b) => b.name.toLowerCase() === highestCategory.name.toLowerCase()
+      );
+
+      const currentSpending = highestCategory.amount;
+      const reductionPercentage = 15;
+      const recommendedBudget = Math.max(0, Math.round(currentSpending - (currentSpending * reductionPercentage) / 100));
+      const potentialSavings = currentSpending - recommendedBudget;
+
+      const isApplied = existingBudget && existingBudget.budget > 0
+        ? existingBudget.budget <= recommendedBudget
+        : false;
+
+      recommendation = {
+        id: `rec-${highestCategory.name.toLowerCase()}-${reductionPercentage}`,
+        category: highestCategory.name,
+        categoryId: existingBudget ? existingBudget._id.toString() : null,
+        currentBudget: existingBudget?.budget || currentSpending,
+        reductionPercentage,
+        recommendedBudget,
+        potentialSavings,
+        isApplied,
+      };
+
+      recommendedAction = `Reduce ${highestCategory.name} spending by ${reductionPercentage}% to save ₹${potentialSavings.toLocaleString()} next month.`;
     }
 
     // 8. End-of-month Predictions
@@ -180,7 +207,8 @@ export const getAIInsights = async (req, res, next) => {
       todayInsight,
       weeklyPrediction,
       recommendedAction,
-      potentialSavings: highestCategory ? Math.round(highestCategory.amount * 0.15) : 1000,
+      potentialSavings: recommendation ? recommendation.potentialSavings : 1000,
+      recommendation,
       suggestions,
       warnings,
       predictions: {
@@ -196,3 +224,90 @@ export const getAIInsights = async (req, res, next) => {
     return next(error);
   }
 };
+
+// @desc    Apply AI recommendation to category budget target safely
+// @route   POST /api/ai/apply-recommendation
+// @access  Private
+export const applyAIRecommendation = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const { category, recommendedBudget, reductionPercentage } = req.body;
+
+    if (!category) {
+      return res.status(400).json({ success: false, message: "Category is required" });
+    }
+
+    const targetBudget = Number(recommendedBudget);
+    if (isNaN(targetBudget) || targetBudget < 0) {
+      return res.status(400).json({ success: false, message: "Invalid recommended budget value" });
+    }
+
+    // Search existing budget target for this user (case-insensitive)
+    let budget = await Budget.findOne({
+      userId,
+      name: { $regex: new RegExp(`^${category}$`, "i") },
+    });
+
+    if (budget) {
+      budget.budget = targetBudget;
+      await budget.save();
+    } else {
+      // Create new budget category entry with calculated spent from existing transactions
+      const transactions = await Transaction.find({
+        userId,
+        category: { $regex: new RegExp(`^${category}$`, "i") },
+        type: "expense",
+      });
+      const currentSpent = transactions.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
+
+      const categoryIcons = {
+        Food: "UtensilsCrossed",
+        Travel: "Plane",
+        Bills: "Receipt",
+        Shopping: "ShoppingBag",
+        Entertainment: "Clapperboard",
+        Other: "Wallet",
+      };
+
+      budget = await Budget.create({
+        userId,
+        name: category,
+        budget: targetBudget,
+        spent: currentSpent,
+        icon: categoryIcons[category] || "ShoppingBag",
+        tone: "accent",
+        month: new Date().toLocaleString("en-US", { month: "short" }),
+        notes: `AI Recommendation target (${reductionPercentage || 15}% reduction)`,
+      });
+    }
+
+    const formattedBudget = {
+      id: budget._id.toString(),
+      _id: budget._id.toString(),
+      userId: budget.userId.toString(),
+      name: budget.name,
+      budget: budget.budget,
+      spent: budget.spent,
+      icon: budget.icon || "ShoppingBag",
+      tone: budget.tone || "accent",
+      month: budget.month || "Jul",
+      notes: budget.notes || "",
+      createdAt: budget.createdAt,
+      updatedAt: budget.updatedAt,
+    };
+
+    return res.status(200).json({
+      success: true,
+      message: "Recommendation applied successfully",
+      budget: formattedBudget,
+      recommendation: {
+        category: budget.name,
+        recommendedBudget: budget.budget,
+        isApplied: true,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
